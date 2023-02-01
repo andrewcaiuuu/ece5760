@@ -10,9 +10,11 @@ initial_x, initial_y, initial_z,
 	input signed [26:0] initial_z;
 	input signed [26:0] rho;
 	input signed [26:0] beta;
-	input signed [26:0] sigma;
+	input signed [21:0] sigma;
 	
-	
+	logic signed [26:0] sign_extend_sigma;
+	assign sign_extend_sigma = sigma << 5;
+
 	output signed [26:0] x_out;
 	output signed [26:0] y_out;
 	output signed [26:0] z_out;
@@ -63,7 +65,7 @@ initial_x, initial_y, initial_z,
 	signed_mult sigma_multiplier
 	(
 		.out(sigma_multiplier_out),
-		.a(sigma>>>8),
+		.a(sign_extend_sigma>>>8),
 		.b(difference_1)
 	);
 	
