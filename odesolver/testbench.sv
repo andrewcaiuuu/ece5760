@@ -54,7 +54,7 @@ odesolver DUT   (.clk(clk_50),
 				.z_out(testbench_zout),
 				.rho(27'b1110000000000000000000000),
 				.beta(27'b000001011000000000000000000),
-				.sigma(27'b1010000000000000000)
+				.sigma(22'b1010000000000000000)
 				);
 	
 endmodule
