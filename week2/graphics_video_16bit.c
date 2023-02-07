@@ -31,25 +31,12 @@
 //#define HW_REGS_SPAN        0x00200000 
 #define HW_REGS_SPAN          0x00005000 
 
+// ODE solver PIO base addresses
 #define FPGA_XOUT_BASE        0x00000000
-#define FPGA_XOUT_END         0x0000000F
-#define FPGA_XOUT_SPAN        0x00000010
-
 #define FPGA_YOUT_BASE        0x00000010
-#define FPGA_YOUT_END         0x0000001F
-#define FPGA_YOUT_SPAN        0x00000010
-
 #define FPGA_ZOUT_BASE        0x00000020
-#define FPGA_ZOUT_END         0x0000002F
-#define FPGA_ZOUT_SPAN        0x00000010
-
 #define FPGA_CLK_BASE         0x00000030
-#define FPGA_CLK_END          0x0000003F
-#define FPGA_CLK_SPAN         0x00000010
-
 #define FPGA_RESET_BASE       0x00000040
-#define FPGA_RESET_END        0x0000004F
-#define FPGA_RESET_SPAN       0x00000010
 
 #define DIVISION_CONST        1048576
 
@@ -218,58 +205,38 @@ int main(void)
 
 		/* NEW STUFF HERE*/
 
-		// unsigned int raw_xvalue = (*(fpga_x_ptr));
-		// unsigned int raw_yvalue = (*(fpga_y_ptr));
-		// unsigned int raw_zvalue = (*(fpga_z_ptr));
+		int raw_xvalue = (*(fpga_x_ptr));
+		int raw_yvalue = (*(fpga_y_ptr));
+		int raw_zvalue = (*(fpga_z_ptr));
 
+		float xvalue = (float) raw_xvalue / DIVISION_CONST;
+		float yvalue = (float) raw_yvalue / DIVISION_CONST;
+		float zvalue = (float) raw_zvalue / DIVISION_CONST;
 
-		unsigned int raw_xvalue = (*(fpga_x_ptr)>>20);
-		unsigned int raw_yvalue = (*(fpga_y_ptr)>>20);
-		unsigned int raw_zvalue = (*(fpga_z_ptr)>>20);
-		if (raw_xvalue >> 11){
-			raw_xvalue =  (raw_xvalue) | 0xFFFFFF80;
-		}
-		if (raw_yvalue >> 11){
-			raw_yvalue = (raw_yvalue) | 0xFFFFFF80;
-		}
-		if(raw_zvalue >> 11) {
-			raw_zvalue = (raw_zvalue) | 0xFFFFFF80;
-		}
+		
 
-		VGA_PIXEL(200 + raw_xvalue*3, 200 + raw_yvalue*3, red);
-
-		VGA_PIXEL(400 + raw_yvalue*3, 200 + raw_zvalue*3, blue);
-
-		VGA_PIXEL(300 + raw_xvalue*3, 350 + raw_zvalue*3, green);
-
-		// unsigned int sevBitMask = 0x07F00000;
-		// signed int signed_raw_xvalue = 0;
-		// if ((raw_xvalue & sevBitMask)>>20 >= 0x40){
-		// 	signed_raw_xvalue = ((raw_xvalue & sevBitMask) >>20) | 0xFFFFFF80;
+		// unsigned int raw_xvalue = (*(fpga_x_ptr)>>20);
+		// unsigned int raw_yvalue = (*(fpga_y_ptr)>>20);
+		// unsigned int raw_zvalue = (*(fpga_z_ptr)>>20);
+		// if (raw_xvalue >> 11){
+		// 	raw_xvalue =  (raw_xvalue) | 0xFFFFFF80;
 		// }
-		// else{
-		// 	signed_raw_xvalue = ((raw_xvalue & sevBitMask) >>20) | 0x00000000;
-
+		// if (raw_yvalue >> 11){
+		// 	raw_yvalue = (raw_yvalue) | 0xFFFFFF80;
 		// }
-		// signed int signed_raw_yvalue = 0;
-		// if ((raw_yvalue & sevBitMask)>>20 >= 0x40){
-		// 	signed_raw_yvalue = ((raw_yvalue & sevBitMask) >>20) | 0xFFFFFF80;
-		// }
-		// else{
-		// 	signed_raw_yvalue = ((raw_yvalue & sevBitMask) >>20) | 0x00000000;
+		// if(raw_zvalue >> 11) {
+		// 	raw_zvalue = (raw_zvalue) | 0xFFFFFF80;
 		// }
 
-		// signed int signed_raw_zvalue = 0;
-		// if ((raw_zvalue & sevBitMask)>>20 >= 0x40){
-		// 	signed_raw_zvalue = ((raw_zvalue & sevBitMask) >>20) | 0xFFFFFF80;
-		// }
-		// else{
-		// 	signed_raw_zvalue = ((raw_zvalue & sevBitMask) >>20) | 0x00000000;
-		// }
-		// VGA_PIXEL(signed_raw_xvalue, signed_raw_yvalue, red);
-		printf( "new x value: %x\n", raw_xvalue) ;
-		printf( "new y value: %x\n", raw_yvalue) ;
-		printf( "new z value: %x\n", raw_zvalue) ;
+		// VGA_PIXEL(200 + raw_xvalue*3, 200 + raw_yvalue*3, red);
+
+		// VGA_PIXEL(400 + raw_yvalue*3, 200 + raw_zvalue*3, blue);
+
+		// VGA_PIXEL(300 + raw_xvalue*3, 350 + raw_zvalue*3, green);
+
+		printf( "new x value: %d\n", raw_xvalue) ;
+		printf( "new y value: %d\n", raw_yvalue) ;
+		printf( "new z value: %d\n", raw_zvalue) ;
 
 		/* NEW STUFF STOP*/
 
