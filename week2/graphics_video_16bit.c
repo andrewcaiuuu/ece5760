@@ -197,9 +197,14 @@ int main(void)
 	*(fpga_clk_ptr) = 0;
 	*(fpga_reset_ptr) = 1;
 	printf( "Initial out value: %d\n", *(fpga_x_ptr)) ;
+	int break_count = 0;
 	double t = 0.0;
 	while(1) 
 	{
+		// break_count = break_count + 1;
+		// if (break_count == 100) {
+		// 	break;
+		// }
 		*(fpga_clk_ptr) = 1;
 		*(fpga_clk_ptr) = 0;
 
@@ -209,60 +214,20 @@ int main(void)
 		int raw_yvalue = (*(fpga_y_ptr));
 		int raw_zvalue = (*(fpga_z_ptr));
 
-		float xvalue = (float) raw_xvalue / DIVISION_CONST;
-		float yvalue = (float) raw_yvalue / DIVISION_CONST;
-		float zvalue = (float) raw_zvalue / DIVISION_CONST;
+		int xvalue = (float) (raw_xvalue * 3) / DIVISION_CONST;
+		int yvalue = (float) (raw_yvalue * 3) / DIVISION_CONST;
+		int zvalue = (float) (raw_zvalue * 3) / DIVISION_CONST;
 
-		
-
-		// unsigned int raw_xvalue = (*(fpga_x_ptr)>>20);
-		// unsigned int raw_yvalue = (*(fpga_y_ptr)>>20);
-		// unsigned int raw_zvalue = (*(fpga_z_ptr)>>20);
-		// if (raw_xvalue >> 11){
-		// 	raw_xvalue =  (raw_xvalue) | 0xFFFFFF80;
-		// }
-		// if (raw_yvalue >> 11){
-		// 	raw_yvalue = (raw_yvalue) | 0xFFFFFF80;
-		// }
-		// if(raw_zvalue >> 11) {
-		// 	raw_zvalue = (raw_zvalue) | 0xFFFFFF80;
-		// }
-
-		// VGA_PIXEL(200 + raw_xvalue*3, 200 + raw_yvalue*3, red);
-
-		// VGA_PIXEL(400 + raw_yvalue*3, 200 + raw_zvalue*3, blue);
-
-		// VGA_PIXEL(300 + raw_xvalue*3, 350 + raw_zvalue*3, green);
-
-		printf( "new x value: %d\n", raw_xvalue) ;
-		printf( "new y value: %d\n", raw_yvalue) ;
-		printf( "new z value: %d\n", raw_zvalue) ;
-
-		/* NEW STUFF STOP*/
-
-		// remove sext and decimal points
-		// int raw_xvalue = *(fpga_x_ptr) >> 20 & 0x7F;
-		// int raw_yvalue = *(fpga_y_ptr) >> 20 & 0x7F;
-		// int raw_zvalue = *(fpga_z_ptr) >> 20 & 0x7F;
-
-		// signed int raw_xvalue = (signed int) ((float) *(fpga_x_ptr)) / (DIVISION_CONST*10);
-		// signed int raw_yvalue = (signed int) ((float) *(fpga_y_ptr)) / (DIVISION_CONST*10);
-		// signed int raw_zvalue = (signed int) ((float) *(fpga_z_ptr)) / (DIVISION_CONST*10);
-
-		// if ( raw_xvalue  & 0x80000000 ){
-		// 	raw_xvalue |= 0x80;
-		// }
-		// if ( raw_yvalue  & 0x80000000 ){
-		// 	raw_yvalue |= 0x80;
-		// }
-
+		printf( "new x value: %d\n", xvalue) ;
+		printf( "new y value: %d\n", yvalue) ;
+		printf( "new z value: %d\n", zvalue) ;
 
 		// printf( "new x value: %d\n", raw_xvalue) ;
 		// printf( "new y value: %d\n", raw_yvalue) ;
 		// printf( "new z value: %d\n", raw_zvalue) ;
-		// VGA_PIXEL(106+raw_xvalue, 119+raw_yvalue, red);
-		// VGA_PIXEL(532+raw_yvalue, 119+raw_zvalue, blue);
-		// VGA_PIXEL(319+raw_xvalue, 359+raw_zvalue, green);
+		VGA_PIXEL(106+xvalue, 119+yvalue, red);
+		VGA_PIXEL(532+yvalue, 119+zvalue, blue);
+		VGA_PIXEL(319+xvalue, 300+zvalue, green);
 		// VGA_PIXEL(raw_xvalue, raw_yvalue, red);
 		// VGA_PIXEL(raw_yvalue, raw_zvalue, blue);
 		// VGA_PIXEL(raw_xvalue, raw_zvalue, green);
@@ -324,7 +289,10 @@ int main(void)
 		//usleep(17000);
 		
 	} // end while(1)
+	*(fpga_reset_ptr) = 0;
+	*(fpga_reset_ptr) = 1;
 } // end main
+
 
 /****************************************************************************************
  * Subroutine to send a string of text to the VGA monitor 
