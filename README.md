@@ -1,3 +1,2 @@
-the new zip is called signal tap working, the audio is also incorporated to this zip project.  
-the C files are in /home/linaro/Downloads, current compiled output is gr.  
-sin code is commented.  
+https://drive.google.com/drive/folders/1nJhO3u79L_ZLjiFX4dNuuHiBKrh3AnuV?usp=sharing
+fpga projects now stored here
