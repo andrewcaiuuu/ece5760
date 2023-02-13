@@ -112,10 +112,120 @@ int fd;
 // measure time
 struct timeval t1, t2;
 double elapsedTime;
-	
+int ready_flag = 0;	
+
 int main(void)
 {
-  	
+	pthread_t thread1;
+	char input;
+	while(1)
+	{
+		printf("r for reset s for start c for change conditions")
+		scanf("%c", &input);
+		if (getChar() == 'r'){
+			I_RESET();
+		}
+		else if (getChar() == 's'){
+			iret1 = pthread_create( &thread1, NULL, I_DRAW, NULL);
+		}
+		else if (getCHar() == 'c') {
+			float rho;
+			float sigma;
+			float beta;
+
+			printf("Enter rho value: ");
+			scanf("%f", &rho);
+			printf("Enter beta value: ");
+			scanf("%f", &beta);
+			printf("Enter sigma value: ");
+			scanf("%f", &sigma);
+
+			int int_rho =  (int) (rho * DIVISION_CONST);
+			int int_sigma =  (int) (sigma * DIVISION_CONST);
+			int int_beta = (int) (beta * DIVISION_CONST);
+
+			*(fpga_rho_ptr) =  int_rho;
+			*(fpga_beta_ptr) =  int_beta;
+			*(fpga_sigma_ptr) = int_sigma;
+			
+		}
+		// iret2 = pthread_create( &thread2, NULL, print_message_function, NULL);
+		// iret2 = pthread_create( &thread2, NULL, print_message_function, NULL);
+		pthread_join( thread1, NULL);
+		// pthread_join( thread2, NULL); 
+		// pthread_join( thread3, NULL);
+	}
+} // end main
+
+void I_CHANGE_CONDITIONS()
+{
+	float rho;
+	float sigma;
+	float beta;
+
+	printf("Enter rho value: ");
+	scanf("%f", &rho);
+	printf("Enter beta value: ");
+	scanf("%f", &beta);
+	printf("Enter sigma value: ");
+	scanf("%f", &sigma);
+
+	int int_rho =  (int) (rho * DIVISION_CONST);
+	int int_sigma =  (int) (sigma * DIVISION_CONST);
+	int int_beta = (int) (beta * DIVISION_CONST);
+
+	*(fpga_rho_ptr) =  int_rho;
+	*(fpga_beta_ptr) =  int_beta;
+	*(fpga_sigma_ptr) = int_sigma;
+
+}
+
+void I_RESET()
+{
+	ready_flag = 0;
+	ready_flag = 1;
+	double t = 0.0;
+	float initial_x = -1.0;
+	float initial_y = 0.1;
+	float initial_z = 25.0;
+	float rho = 28.0;
+	float sigma = 10.0;
+	float beta = 2.6666;
+
+	// printf("Enter initial X value: ");
+	// scanf("%f", &initial_x);
+	// printf("Enter initial Y value: ");
+	// scanf("%f", &initial_y);
+	// printf("Enter initial Z value: ");
+	// scanf("%f", &initial_z);
+
+	int int_initial_x = (int) (initial_x * DIVISION_CONST);
+	int int_initial_y = (int) (initial_y * DIVISION_CONST);
+	int int_initial_z = (int) (initial_z * DIVISION_CONST);
+	int int_rho =  (int) (rho * DIVISION_CONST);
+	int int_sigma =  (int) (sigma * DIVISION_CONST);
+	int int_beta = (int) (beta * DIVISION_CONST);
+
+	*(fpga_initial_x_ptr) = int_initial_x;
+	*(fpga_initial_y_ptr) = int_initial_y;
+	*(fpga_initial_z_ptr) = int_initial_z;
+
+	*(fpga_rho_ptr) =  int_rho;
+	*(fpga_beta_ptr) =  int_beta;
+	*(fpga_sigma_ptr) = int_sigma;
+
+	*(fpga_clk_ptr) = 0;
+	*(fpga_reset_ptr) = 1;
+	*(fpga_clk_ptr) = 1;
+	*(fpga_clk_ptr) = 0;
+	*(fpga_reset_ptr) = 0;
+
+	ready_flag = 1;
+}
+
+
+void I_DRAW()
+{
 	// === need to mmap: =======================
 	// FPGA_CHAR_BASE
 	// FPGA_ONCHIP_BASE      
@@ -219,42 +329,42 @@ int main(void)
 	// *(fpga_reset_ptr) = 1;
 	// printf( "Initial out value: %d\n", *(fpga_x_ptr)) ;
 	// int break_count = 0;
-	double t = 0.0;
-	float initial_x = -1.0;
-	float initial_y = 0.1;
-	float initial_z = 25.0;
-	float rho = 28.0;
-	float sigma = 10.0;
-	float beta = 2.6666;
+	// double t = 0.0;
+	// float initial_x = -1.0;
+	// float initial_y = 0.1;
+	// float initial_z = 25.0;
+	// float rho = 28.0;
+	// float sigma = 10.0;
+	// float beta = 2.6666;
 
-	printf("Enter initial X value: ");
-	scanf("%f", &initial_x);
-	printf("Enter initial Y value: ");
-	scanf("%f", &initial_y);
-	printf("Enter initial Z value: ");
-	scanf("%f", &initial_z);
+	// printf("Enter initial X value: ");
+	// scanf("%f", &initial_x);
+	// printf("Enter initial Y value: ");
+	// scanf("%f", &initial_y);
+	// printf("Enter initial Z value: ");
+	// scanf("%f", &initial_z);
 
-	printf("Enter rho value: ");
-	scanf("%f", &rho);
-	printf("Enter beta value: ");
-	scanf("%f", &beta);
-	printf("Enter sigma value: ");
-	scanf("%f", &sigma);
+	// printf("Enter rho value: ");
+	// scanf("%f", &rho);
+	// printf("Enter beta value: ");
+	// scanf("%f", &beta);
+	// printf("Enter sigma value: ");
+	// scanf("%f", &sigma);
 
-	int int_initial_x = (int) (initial_x * DIVISION_CONST);
-	int int_initial_y = (int) (initial_y * DIVISION_CONST);
-	int int_initial_z = (int) (initial_z * DIVISION_CONST);
-	int int_rho =  (int) (rho * DIVISION_CONST);
-	int int_sigma =  (int) (sigma * DIVISION_CONST);
-	int int_beta = (int) (beta * DIVISION_CONST);
+	// int int_initial_x = (int) (initial_x * DIVISION_CONST);
+	// int int_initial_y = (int) (initial_y * DIVISION_CONST);
+	// int int_initial_z = (int) (initial_z * DIVISION_CONST);
+	// int int_rho =  (int) (rho * DIVISION_CONST);
+	// int int_sigma =  (int) (sigma * DIVISION_CONST);
+	// int int_beta = (int) (beta * DIVISION_CONST);
 
-	*(fpga_initial_x_ptr) = int_initial_x;
-	*(fpga_initial_y_ptr) = int_initial_y;
-	*(fpga_initial_z_ptr) = int_initial_z;
+	// *(fpga_initial_x_ptr) = int_initial_x;
+	// *(fpga_initial_y_ptr) = int_initial_y;
+	// *(fpga_initial_z_ptr) = int_initial_z;
 
-	*(fpga_rho_ptr) =  int_rho;
-	*(fpga_beta_ptr) =  int_beta;
-	*(fpga_sigma_ptr) = int_sigma;
+	// *(fpga_rho_ptr) =  int_rho;
+	// *(fpga_beta_ptr) =  int_beta;
+	// *(fpga_sigma_ptr) = int_sigma;
 
 	// *(fpga_initial_x_ptr) = 0xfff00000;
 	// *(fpga_initial_y_ptr) = 0x1000;
@@ -278,8 +388,10 @@ int main(void)
 	// }
 	// *(fpga_clk_ptr) = 0;
 
+
 	while(1) 
 	{
+		while(!ready_flag);
 		printf("debugging init x: %x\n", *(fpga_initial_x_ptr));
 		printf("debugging init y: %x\n", *(fpga_initial_y_ptr));
 		printf("debugging init z: %x\n", *(fpga_initial_z_ptr));
@@ -373,8 +485,7 @@ int main(void)
 		usleep(17000);
 		
 	} // end while(1)
-} // end main
-
+}
 
 /****************************************************************************************
  * Subroutine to send a string of text to the VGA monitor 
