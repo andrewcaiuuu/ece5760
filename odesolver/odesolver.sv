@@ -10,10 +10,12 @@ initial_x, initial_y, initial_z,
 	input signed [26:0] initial_z;
 	input signed [26:0] rho;
 	input signed [26:0] beta;
-	input signed [21:0] sigma;
+	//input signed [21:0] sigma;
+	input signed [26:0] sigma;
 	
 	logic signed [26:0] sign_extend_sigma;
-	assign sign_extend_sigma = sigma << 5;
+	assign sign_extend_sigma = sigma;
+	//assign sign_extend_sigma = sigma << 5;
 
 	output signed [26:0] x_out;
 	output signed [26:0] y_out;
