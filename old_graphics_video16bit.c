@@ -16,6 +16,12 @@
 #include <sys/mman.h>
 #include <sys/time.h> 
 #include <math.h>
+#include <stdio.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <stdlib.h>
+
+
 //#include "address_map_arm_brl4.h"
 
 // video display
@@ -214,86 +220,39 @@ int main(void)
 	
 	// printf( "Initial out value: %d\n", *(fpga_x_ptr)) ;
 	// int break_count = 0;
-	double t = 0.0;
-	float initial_x = -1.0;
-	float initial_y = 0.1;
-	float initial_z = 25.0;
-	float rho = 28.0;
-	float sigma = 10.0;
-	float beta = 2.6666;
 
-	// printf("Enter initial X value: ");
-	// scanf("%f", &initial_x);
-	// printf("Enter initial Y value: ");
-	// scanf("%f", &initial_y);
-	// printf("Enter initial Z value: ");
-	// scanf("%f", &initial_z);
+	while(1){
+		printf("enter rho: ")
+		// later
+		printf("enter beta: ")
+		// later
+		printf("enter sigma: ")
+		// later
+	}
+} // end main
 
-	// printf("Enter rho value: ");
-	// scanf("%f", &rho);
-	// printf("Enter beta value: ");
-	// scanf("%f", &beta);
-	// printf("Enter sigma value: ");
-	// scanf("%f", &sigma);
 
-	int int_initial_x = (int) (initial_x * DIVISION_CONST);
-	int int_initial_y = (int) (initial_y * DIVISION_CONST);
-	int int_initial_z = (int) (initial_z * DIVISION_CONST);
-	int int_rho =  (int) (rho * DIVISION_CONST);
-	int int_sigma =  (int) (sigma * DIVISION_CONST);
-	int int_beta = (int) (beta * DIVISION_CONST);
+    // *(fpga_clk_ptr) = 0;
+	// *(fpga_reset_ptr) = 0;
+	// *(fpga_clk_ptr) = 1;
+	// *(fpga_clk_ptr) = 0;
+	// *(fpga_reset_ptr) = 1;
 
-	*(fpga_initial_x_ptr) = int_initial_x;
-	*(fpga_initial_y_ptr) = int_initial_y;
-	*(fpga_initial_z_ptr) = int_initial_z;
-
-	*(fpga_rho_ptr) =  int_rho;
-	*(fpga_beta_ptr) =  int_beta;
-	*(fpga_sigma_ptr) = int_sigma;
-
+void * RESET() 
+{
+	// do the reset
+	
     *(fpga_clk_ptr) = 0;
 	*(fpga_reset_ptr) = 0;
 	*(fpga_clk_ptr) = 1;
 	*(fpga_clk_ptr) = 0;
 	*(fpga_reset_ptr) = 1;
+}
 
-	// *(fpga_initial_x_ptr) = 0xfff00000;
-	// *(fpga_initial_y_ptr) = 0x1000;
-	// *(fpga_initial_z_ptr) = 0x1900000;
-
-	// *(fpga_rho_ptr) =   0x1c00000;
-	// *(fpga_beta_ptr) =  0x2c0000;
-	// *(fpga_sigma_ptr) = 0xa00000;
-
-	// debugging rho: 1c00000
-	// debugging beta: 2c0000
-	// debugging sigma: a00000
-	// debugging init x: fff00000
-	// debugging init y: 1000
-	// debugging init z: 1900000
-	// *(fpga_clk_ptr) = 0;
-	// *(fpga_clk_ptr) = 1;
-	// while ((fpga_reset_ptr)){
-	// 	printf("spin", );
-	// 	usleep(17000);
-	// }
-	// *(fpga_clk_ptr) = 0;
-    // *(fpga_clk_ptr) = 0;
-    // *(fpga_reset_ptr) = 0;
-    // *(fpga_clk_ptr) = 1;
-    // *(fpga_clk_ptr) = 0;
-    // *(fpga_reset_ptr) = 1;
+void * DO_DRAW()
+{
 	while(1) 
 	{
-
-		printf("debugging init x: %x\n", *(fpga_initial_x_ptr));
-		printf("debugging init y: %x\n", *(fpga_initial_y_ptr));
-		printf("debugging init z: %x\n", *(fpga_initial_z_ptr));
-
-		printf("debugging rho: %x\n", *(fpga_rho_ptr));
-		printf("debugging beta: %x\n", *(fpga_beta_ptr));
-		printf("debugging sigma: %x\n", *(fpga_sigma_ptr));
-
 		*(fpga_clk_ptr) = 1;
 		*(fpga_clk_ptr) = 0;
 
@@ -307,80 +266,24 @@ int main(void)
 		int yvalue = (float) (raw_yvalue * 3) / DIVISION_CONST;
 		int zvalue = (float) (raw_zvalue * 3) / DIVISION_CONST;
 
-		printf( "new x value: %x\n", xvalue) ;
-		printf( "new y value: %x\n", yvalue) ;
-		printf( "new z value: %x\n", zvalue) ;
-
-		printf( "raw x value: %x\n", raw_xvalue) ;
-		printf( "raw y value: %x\n", raw_yvalue) ;
-		printf( "raw z value: %x\n", raw_zvalue) ;
-
 		VGA_PIXEL(106+xvalue, 119+yvalue, red);
 		VGA_PIXEL(532+yvalue, 119+zvalue, blue);
 		VGA_PIXEL(319+xvalue, 300+zvalue, green);
-		// VGA_PIXEL(raw_xvalue, raw_yvalue, red);
-		// VGA_PIXEL(raw_yvalue, raw_zvalue, blue);
-		// VGA_PIXEL(raw_xvalue, raw_zvalue, green);
-		//printf( "new z value orig: %d\n", *(fpga_z_ptr));
-		// start timer
 		gettimeofday(&t1, NULL);
-		// VGA_sine(t, blue);
-	
-		// //VGA_box(int x1, int y1, int x2, int y2, short pixel_color)
-		// VGA_box(64, 0, 240, 50, blue); // blue box
-		// VGA_box(250, 0, 425, 50, red); // red box
-		// VGA_box(435, 0, 600, 50, green); // green box
 		if ( t < 639 ) 
 			t = t + 1.0/256;
 		else
 			t = 0.0;
-		// printf("tvalue: %d", (int)t);
 
-		// // cycle thru the colors
-		// if (color_index++ == 11) color_index = 0;
-		
-		// //void VGA_disc(int x, int y, int r, short pixel_color)
-		// VGA_disc(disc_x, 100, 20, colors[color_index]);
-		// disc_x += 35 ;
-		// if (disc_x > 640) disc_x = 0;
-		
-		// //void VGA_circle(int x, int y, int r, short pixel_color)
-		// VGA_circle(320, 200, circle_x, colors[color_index]);
-		// VGA_circle(320, 200, circle_x+1, colors[color_index]);
-		// circle_x += 2 ;
-		// if (circle_x > 99) circle_x = 0;
-		
-		// //void VGA_rect(int x1, int y1, int x2, int y2, short pixel_color)
-		// VGA_rect(10, 478, box_x, 478-box_x, rand()&0xffff);
-		// box_x += 3 ;
-		// if (box_x > 195) box_x = 10;
-		
-		// //void VGA_line(int x1, int y1, int x2, int y2, short c)
-		// VGA_line(210+(rand()&0x7f), 350+(rand()&0x7f), 210+(rand()&0x7f), 
-		// 		350+(rand()&0x7f), colors[color_index]);
-		
-		// // void VGA_Vline(int x1, int y1, int y2, short pixel_color)
-		// VGA_Vline(Vline_x, 475, 475-(Vline_x>>2), rand()&0xffff);
-		// Vline_x += 2 ;
-		// if (Vline_x > 620) Vline_x = 350;
-		
-		// //void VGA_Hline(int x1, int y1, int x2, short pixel_color)
-		// VGA_Hline(400, Hline_y, 550, rand()&0xffff);
-		// Hline_y += 2 ;
-		// if (Hline_y > 400) Hline_y = 240;
-		
-		// stop timer
 		gettimeofday(&t2, NULL);
 		elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000000.0;      // sec to us
 		elapsedTime += (t2.tv_usec - t1.tv_usec) ;   // us 
 		sprintf(time_string, "T = %6.0f uSec  ", elapsedTime);
-		// VGA_text (10, 4, time_string);
-		// set frame rate
+
 		usleep(17000);
 		
 	} // end while(1)
-} // end main
-
+}
 
 /****************************************************************************************
  * Subroutine to send a string of text to the VGA monitor 
