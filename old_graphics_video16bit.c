@@ -112,12 +112,234 @@ volatile unsigned int * fpga_sigma_ptr = NULL;
 volatile unsigned int * fpga_rho_ptr = NULL;
 volatile unsigned int * fpga_beta_ptr = NULL;
 
+volatile int reset_lock;
+
+sem_t reset_done; // tells draw that reset is done
+sem_t draw_cycle_done; // tells reset that one draw cycle done
+
 // /dev/mem file id
 int fd;
 
 // measure time
 struct timeval t1, t2;
 double elapsedTime;
+
+
+void * RESET() 
+{
+	// === need to mmap: =======================
+	// FPGA_CHAR_BASE
+	// FPGA_ONCHIP_BASE      
+	// HW_REGS_BASE        
+  
+	// === get FPGA addresses ==================
+    // Open /dev/mem
+	if( ( fd = open( "/dev/mem", ( O_RDWR | O_SYNC ) ) ) == -1 ) 	{
+		printf( "ERROR: could not open \"/dev/mem\"...\n" );
+		return( 1 );
+	}
+
+    // get virtual addr that maps to physical
+	h2p_lw_virtual_base = mmap( NULL, HW_REGS_SPAN, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, HW_REGS_BASE );	
+	if( h2p_lw_virtual_base == MAP_FAILED ) {
+		printf( "ERROR: mmap1() failed...\n" );
+		close( fd );
+		return(1);
+	}
+    
+	//ode stuff
+	fpga_clk_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_CLK_BASE);
+	fpga_reset_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_RESET_BASE);
+	fpga_x_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_XOUT_BASE);
+	fpga_y_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_YOUT_BASE);
+	fpga_z_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_ZOUT_BASE);
+
+	fpga_initial_x_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_INIT_X_BASE);
+	fpga_initial_y_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_INIT_Y_BASE);
+	fpga_initial_z_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_INIT_Z_BASE);
+	fpga_sigma_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_SIGMA_BASE);
+	fpga_beta_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_BETA_BASE);
+	fpga_rho_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_RHO_BASE);
+
+	// === get VGA char addr =====================
+	// get virtual addr that maps to physical
+	vga_char_virtual_base = mmap( NULL, FPGA_CHAR_SPAN, ( 	PROT_READ | PROT_WRITE ), MAP_SHARED, fd, FPGA_CHAR_BASE );	
+	if( vga_char_virtual_base == MAP_FAILED ) {
+		printf( "ERROR: mmap2() failed...\n" );
+		close( fd );
+		return(1);
+	}
+
+    // Get the address that maps to the FPGA LED control 
+	vga_char_ptr =(unsigned int *)(vga_char_virtual_base);
+
+	// === get VGA pixel addr ====================
+	// get virtual addr that maps to physical
+	vga_pixel_virtual_base = mmap( NULL, SDRAM_SPAN, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, SDRAM_BASE);	
+	if( vga_pixel_virtual_base == MAP_FAILED ) {
+		printf( "ERROR: mmap3() failed...\n" );
+		close( fd );
+		return(1);
+	}
+    
+    // Get the address that maps to the FPGA pixel buffer
+	vga_pixel_ptr =(unsigned int *)(vga_pixel_virtual_base);
+
+	// ===========================================
+
+	// do the reset
+	while (1){
+		if (!reset_lock){
+			//printf("im resetting");
+			
+			// clear the screen
+			VGA_box (0, 0, 639, 479, 0x0000);
+			//set default values
+			float x = -1;
+			float y = 0.1;
+			float z = 25;
+			float sigma = 10;
+			float beta = 2.66666;
+			float rho = 28;
+			int fixed_x = (int) x * DIVISION_CONST;
+			int fixed_y = (int) y * DIVISION_CONST;
+			int fixed_z = (int) z * DIVISION_CONST;
+			int fixed_sigma = (int) sigma * DIVISION_CONST;
+			int fixed_beta = (int) beta * DIVISION_CONST;
+			int fixed_rho = (int) rho * DIVISION_CONST;
+			*(fpga_initial_x_ptr) = fixed_x;
+			*(fpga_initial_y_ptr) = fixed_y;
+			*(fpga_initial_z_ptr) = fixed_z;
+			*(fpga_sigma_ptr) = fixed_sigma;
+			*(fpga_beta_ptr) = fixed_beta;
+			*(fpga_rho_ptr) = fixed_rho;
+			//assert reset
+			//sem_wait(&draw_cycle_done);
+			//printf("critical section reset\n");
+			*(fpga_reset_ptr) = 0;
+			//usleep(1700);
+			while (*(fpga_clk_ptr) != 1){
+			}
+			*(fpga_reset_ptr) = 1;
+			
+			// *(fpga_clk_ptr) = 0;
+			// *(fpga_reset_ptr) = 0;
+			// *(fpga_clk_ptr) = 1;
+			// *(fpga_clk_ptr) = 0;
+			// *(fpga_reset_ptr) = 1;
+			// free the mutex
+			//sem_post(&reset_done);
+			reset_lock = 1;
+		}
+	}
+
+}
+
+void * DO_DRAW()
+{
+	// === need to mmap: =======================
+	// FPGA_CHAR_BASE
+	// FPGA_ONCHIP_BASE      
+	// HW_REGS_BASE        
+  
+	// === get FPGA addresses ==================
+    // Open /dev/mem
+	if( ( fd = open( "/dev/mem", ( O_RDWR | O_SYNC ) ) ) == -1 ) 	{
+		printf( "ERROR: could not open \"/dev/mem\"...\n" );
+		return( 1 );
+	}
+
+    // get virtual addr that maps to physical
+	h2p_lw_virtual_base = mmap( NULL, HW_REGS_SPAN, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, HW_REGS_BASE );	
+	if( h2p_lw_virtual_base == MAP_FAILED ) {
+		printf( "ERROR: mmap1() failed...\n" );
+		close( fd );
+		return(1);
+	}
+    
+	//ode stuff
+	fpga_clk_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_CLK_BASE);
+	fpga_reset_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_RESET_BASE);
+	fpga_x_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_XOUT_BASE);
+	fpga_y_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_YOUT_BASE);
+	fpga_z_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_ZOUT_BASE);
+
+	fpga_initial_x_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_INIT_X_BASE);
+	fpga_initial_y_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_INIT_Y_BASE);
+	fpga_initial_z_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_INIT_Z_BASE);
+	fpga_sigma_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_SIGMA_BASE);
+	fpga_beta_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_BETA_BASE);
+	fpga_rho_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_RHO_BASE);
+
+	// === get VGA char addr =====================
+	// get virtual addr that maps to physical
+	vga_char_virtual_base = mmap( NULL, FPGA_CHAR_SPAN, ( 	PROT_READ | PROT_WRITE ), MAP_SHARED, fd, FPGA_CHAR_BASE );	
+	if( vga_char_virtual_base == MAP_FAILED ) {
+		printf( "ERROR: mmap2() failed...\n" );
+		close( fd );
+		return(1);
+	}
+
+    // Get the address that maps to the FPGA LED control 
+	vga_char_ptr =(unsigned int *)(vga_char_virtual_base);
+
+	// === get VGA pixel addr ====================
+	// get virtual addr that maps to physical
+	vga_pixel_virtual_base = mmap( NULL, SDRAM_SPAN, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, SDRAM_BASE);	
+	if( vga_pixel_virtual_base == MAP_FAILED ) {
+		printf( "ERROR: mmap3() failed...\n" );
+		close( fd );
+		return(1);
+	}
+    
+    // Get the address that maps to the FPGA pixel buffer
+	vga_pixel_ptr =(unsigned int *)(vga_pixel_virtual_base);
+
+	// ===========================================
+
+	while(1) 
+	{
+		
+		//printf("im alive\n");
+		//sem_wait(&reset_done);
+		//printf("critical section draw \n");
+		*(fpga_clk_ptr) = 1;
+		*(fpga_clk_ptr) = 0;
+		//sem_post(&draw_cycle_done);
+
+		/* NEW STUFF HERE*/
+
+		int raw_xvalue = (*(fpga_x_ptr));
+		int raw_yvalue = (*(fpga_y_ptr));
+		int raw_zvalue = (*(fpga_z_ptr));
+
+		int xvalue = (float) (raw_xvalue * 3) / DIVISION_CONST;
+		int yvalue = (float) (raw_yvalue * 3) / DIVISION_CONST;
+		int zvalue = (float) (raw_zvalue * 3) / DIVISION_CONST;
+
+		
+		if((106+xvalue)<640 && (119+yvalue)<480)
+			VGA_PIXEL(106+xvalue, 119+yvalue, red);
+		if((532+yvalue)<640 && (119+zvalue) < 480)
+ 			VGA_PIXEL(532+yvalue, 119+zvalue, blue);
+		if((319+xvalue)<640 && (300+zvalue))
+			VGA_PIXEL(319+xvalue, 300+zvalue, green);
+
+
+		gettimeofday(&t1, NULL);
+		// if ( t < 639 ) 
+		// 	t = t + 1.0/256;
+		// else
+		// 	t = 0.0;
+
+		gettimeofday(&t2, NULL);
+		elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000000.0;      // sec to us
+		elapsedTime += (t2.tv_usec - t1.tv_usec) ;   // us 
+		// sprintf(time_string, "T = %6.0f uSec  ", elapsedTime);
+
+		usleep(17000);
+	} // end while(1)
+}
 	
 int main(void)
 {
@@ -220,15 +442,82 @@ int main(void)
 	
 	// printf( "Initial out value: %d\n", *(fpga_x_ptr)) ;
 	// int break_count = 0;
+	char input;
+	reset_lock = 1;
+	int draw_speed = 1700;
+	pthread_t thread_reset, thread_draw;
+	//reset is ready at init time
+	sem_init(&reset_done, 0, 0);
+	sem_init(&draw_cycle_done, 0, 1);
+	//pthread_create(&thread_reset, NULL, RESET, NULL);
 
+	pthread_create(&thread_draw, NULL, DO_DRAW, NULL);
+	pthread_create(&thread_reset, NULL, RESET, NULL);
+
+	VGA_box (0, 0, 639, 479, 0x0000);
+	//set default values
+	// float x = -1;
+	// float y = 0.1;
+	// float z = 25;
+	// float sigma = 10;
+	// float beta = 2.66666;
+	// float rho = 28;
+	// int fixed_x = (int) x * DIVISION_CONST;
+	// int fixed_y = (int) y * DIVISION_CONST;
+	// int fixed_z = (int) z * DIVISION_CONST;
+	// int fixed_sigma = (int) sigma * DIVISION_CONST;
+	// int fixed_beta = (int) beta * DIVISION_CONST;
+	// int fixed_rho = (int) rho * DIVISION_CONST;
+	// *(fpga_initial_x_ptr) = fixed_x;
+	// *(fpga_initial_y_ptr) = fixed_y;
+	// *(fpga_initial_z_ptr) = fixed_z;
+	// *(fpga_sigma_ptr) = fixed_sigma;
+	// *(fpga_beta_ptr) = fixed_beta;
+	// *(fpga_rho_ptr) = fixed_rho;
+	// //assert reset
+	// *(fpga_clk_ptr) = 0;
+	// *(fpga_reset_ptr) = 0;
+	// *(fpga_clk_ptr) = 1;
+	// *(fpga_clk_ptr) = 0;
+	// *(fpga_reset_ptr) = 1;
 	while(1){
-		printf("enter rho: ")
-		// later
-		printf("enter beta: ")
-		// later
-		printf("enter sigma: ")
-		// later
+		printf("enter r for reset, c for change params\n");
+		scanf("%c", &input);
+		if (input == 'r'){
+			reset_lock = 0;
+		}
+		else if (input =='c'){
+			float rho;
+			float beta;
+			float sigma;
+			int fixed_rho;
+			int fixed_beta; 
+			int fixed_sigma;
+			int new_draw_speed;
+
+			printf("enter rho: \n");
+			scanf("%f", &rho);
+			fixed_rho = (int) rho * DIVISION_CONST;
+			*(fpga_rho_ptr) = fixed_rho;
+
+			printf("enter beta: \n");
+			scanf("%f", &beta);
+			fixed_beta = (int) beta * DIVISION_CONST;
+			*(fpga_beta_ptr) = fixed_beta;
+
+			printf("enter sigma: \n");
+			scanf("%f", &sigma);
+			fixed_sigma = (int) sigma * DIVISION_CONST;
+			*(fpga_sigma_ptr) = fixed_sigma;
+
+			// printf("enter draw speed: ")
+			// scanf("%d", &new_draw_speed);
+			// draw_speed = new_draw_speed;
+		}
 	}
+	pthread_join(thread_reset, NULL);
+	pthread_join(thread_draw, NULL);
+	return 0;
 } // end main
 
 
@@ -237,53 +526,6 @@ int main(void)
 	// *(fpga_clk_ptr) = 1;
 	// *(fpga_clk_ptr) = 0;
 	// *(fpga_reset_ptr) = 1;
-
-void * RESET() 
-{
-	// do the reset
-	
-    *(fpga_clk_ptr) = 0;
-	*(fpga_reset_ptr) = 0;
-	*(fpga_clk_ptr) = 1;
-	*(fpga_clk_ptr) = 0;
-	*(fpga_reset_ptr) = 1;
-}
-
-void * DO_DRAW()
-{
-	while(1) 
-	{
-		*(fpga_clk_ptr) = 1;
-		*(fpga_clk_ptr) = 0;
-
-		/* NEW STUFF HERE*/
-
-		int raw_xvalue = (*(fpga_x_ptr));
-		int raw_yvalue = (*(fpga_y_ptr));
-		int raw_zvalue = (*(fpga_z_ptr));
-
-		int xvalue = (float) (raw_xvalue * 3) / DIVISION_CONST;
-		int yvalue = (float) (raw_yvalue * 3) / DIVISION_CONST;
-		int zvalue = (float) (raw_zvalue * 3) / DIVISION_CONST;
-
-		VGA_PIXEL(106+xvalue, 119+yvalue, red);
-		VGA_PIXEL(532+yvalue, 119+zvalue, blue);
-		VGA_PIXEL(319+xvalue, 300+zvalue, green);
-		gettimeofday(&t1, NULL);
-		if ( t < 639 ) 
-			t = t + 1.0/256;
-		else
-			t = 0.0;
-
-		gettimeofday(&t2, NULL);
-		elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000000.0;      // sec to us
-		elapsedTime += (t2.tv_usec - t1.tv_usec) ;   // us 
-		sprintf(time_string, "T = %6.0f uSec  ", elapsedTime);
-
-		usleep(17000);
-		
-	} // end while(1)
-}
 
 /****************************************************************************************
  * Subroutine to send a string of text to the VGA monitor 
