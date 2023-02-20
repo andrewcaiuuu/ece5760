@@ -48,7 +48,7 @@ module testbench();
 	assign testbench_cr = 27'b001100110011001100110011;
 	//Instantiation of Device Under Test
 	// hook up the sine wave generators
-mandelbrot DUT   (.clk(clk_50), 
+iterator DUT   (.clk(clk_50), 
 				.rst(reset),
                 .ci(testbench_ci),
                 .cr(testbench_cr),

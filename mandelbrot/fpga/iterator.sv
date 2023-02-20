@@ -1,4 +1,4 @@
-module mandelbrot(clk, rst, ci, cr, max_iterations, iterations, done);
+module iterator(clk, rst, ci, cr, max_iterations, iterations, done);
     input clk;
     input rst;
     input signed [26:0] ci;
