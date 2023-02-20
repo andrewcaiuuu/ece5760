@@ -8,7 +8,7 @@ module testbench();
 
 	wire signed [26:0] testbench_ci;
 	wire signed [26:0] testbench_cr;
-    wire [31:0] testbench_max_iterations;
+    wire [31:0] testbench_max_iterations = 32'h32000000;
     wire [31:0] testbench_iterations;
     wire testbench_done;
 
@@ -44,8 +44,15 @@ module testbench();
 	always @ (posedge clk_50) begin
 		index  <= index + 32'd1;
 	end
-	assign testbench_ci = 27'b11001100110011001100;
-	assign testbench_cr = 27'b001100110011001100110011;
+	//assign testbench_ci = 27'b11001100110011001100;
+	//assign testbench_cr = 27'b001100110011001100110011;
+
+
+	//assign testbench_ci = 27'h400000;
+	//assign testbench_cr = 27'hffc00000;
+
+	assign testbench_ci = 27'hffc00000;
+	assign testbench_cr =  27'h400000;
 	//Instantiation of Device Under Test
 	// hook up the sine wave generators
 iterator DUT   (.clk(clk_50), 

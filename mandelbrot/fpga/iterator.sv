@@ -38,12 +38,22 @@ module iterator(clk, rst, ci, cr, max_iterations, iterations, done);
             temp_zr_2 <= 0;
             done <= 0;
         end
+        else if(iterations == max_iterations) begin
+            done <= 1;
+        end
+
         else begin
             iterations <= iterations + 1;
             // fixed point 4
-            if ( (zi_2 + zr_2) > 32'b0010000000000000000000000000 )begin
+            
+            if( (zi >= 27'sh1000000) || (zr >= 27'sh1000000) || (zi <= -27'sh1000000) || (zr <= -27'sh1000000)) begin
                 done <= 1;
             end
+
+            else if ( (zi_2 + zr_2) > 32'sb0010000000000000000000000000 )begin
+                done <= 1;
+            end
+            
             else begin 
                 temp_zi <= zi;
                 temp_zr <= zr;
