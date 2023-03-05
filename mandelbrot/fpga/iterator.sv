@@ -21,8 +21,8 @@ iterations, final_zi, final_zr, done, all_done);
     logic [26:0] ci_incr = 27'sh8888;
 
     logic [31:0] cur_iterations, cur_iterations_in;
-    logic signed [26:0] ci;
-    logic signed [26:0] cr;
+    logic signed [26:0] ci, ci_in;
+    logic signed [26:0] cr, cr_in;
     logic [31:0] cur_range, cur_range_in;
 
     // zi zr and zi2 zr2 
@@ -74,8 +74,8 @@ iterations, final_zi, final_zr, done, all_done);
                 temp_zr_in = 0;
                 temp_zi_2_in = 0;
                 temp_zr_2_in = 0;
-                ci = ci_init;
-                cr = cr_init;
+                ci_in = ci_init;
+                cr_in = cr_init;
                 cur_range_in = range;
             end 
 
@@ -113,13 +113,13 @@ iterations, final_zi, final_zr, done, all_done);
                         cur_range_in = cur_range - 1;
                         if ( (cr + cr_incr) > 27'sh800000 ) begin 
                             if ( (ci + ci_incr) > 27'sh800000 ) begin 
-                                ci = ci + ci_incr;
-                                cr = 27'shff000000;
+                                ci_in = ci + ci_incr;
+                                cr_in = 27'shff000000;
                             end 
                         end
 
                         else begin 
-                            cr = cr + cr_incr;
+                            cr_in = cr + cr_incr;
                         end 
                         snext = S_DO_ITER;
                     end 
@@ -190,6 +190,8 @@ iterations, final_zi, final_zr, done, all_done);
             temp_zi_2 <= temp_zi_2_in;
             temp_zr_2 <= temp_zr_2_in;
             cur_range <= cur_range_in;
+            ci <= ci_in;
+            cr <= cr_in;
         end 
     end 
 
