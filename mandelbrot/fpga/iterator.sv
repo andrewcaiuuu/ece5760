@@ -17,8 +17,8 @@ iterations, final_zi, final_zr, done, all_done);
     output done; // one iter
     output all_done; // all iters
 
-    logic [26:0] cr_incr = 27'sh9999;
-    logic [26:0] ci_incr = 27'sh8888;
+    logic signed [26:0] cr_incr = 27'sh9999;
+    logic signed [26:0] ci_incr = 27'sh8888;
 
     logic [31:0] cur_iterations, cur_iterations_in;
     logic signed [26:0] ci, ci_in;
@@ -112,7 +112,7 @@ iterations, final_zi, final_zr, done, all_done);
                     if ( cur_range != 32'b1 ) begin 
                         cur_range_in = cur_range - 1;
                         if ( (cr + cr_incr) > 27'sh800000 ) begin 
-                            if ( (ci + ci_incr) > 27'sh800000 ) begin 
+                            if ( (ci + ci_incr) < 27'sh800000 ) begin 
                                 ci_in = ci + ci_incr;
                                 cr_in = 27'shff000000;
                             end 
