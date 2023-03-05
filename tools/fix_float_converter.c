@@ -4,10 +4,12 @@
 int main() {
     // Write C code here
     // printf("Hello world");
-    float float_input =  0.4;
-    int fixed_input = (int) (float_input * SCALE_CONST);
+    int fixed_input =  0x4099999;
+    // sign extend 
+    fixed_input = ((fixed_input << 5) >> 5);
+    float float_input = (float) (fixed_input / SCALE_CONST);
     int sanity = 20;
-    printf("%x\n", fixed_input);
+    printf("%.10f\n", float_input);
     printf("sanity: %x\n", sanity);
     
     return 0;
