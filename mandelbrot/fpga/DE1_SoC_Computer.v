@@ -405,59 +405,55 @@ reg [31:0] timer ; // may need to throttle write-rate
 //=======================================================
 // Controls for VGA memory 1
 //=======================================================
-wire [31:0]        1_vga_out_base_address = 32'h0000_0000 ;  // vga base addr
-reg [7:0]          1_vga_sram_writedata ;
-reg [31:0]         1_vga_sram_address; 
-reg                1_vga_sram_write ;
-wire               1_vga_sram_clken = 1'b1;
-wire               1_vga_sram_chipselect = 1'b1;
-signed wire[26:0]  1_ci_init;
-signed wire[26:0]  1_cr_init;
-wire[31:0]         1_range 
-wire[31:0]         1_base;
+reg [7:0]          a_vga_sram_writedata ;
+reg [31:0]         a_vga_sram_address; 
+reg                a_vga_sram_write ;
+wire               a_vga_sram_clken = 1'b1;
+wire               a_vga_sram_chipselect = 1'b1;
+wire signed[26:0]  a_ci_init;
+wire signed[26:0]  a_cr_init;
+wire[31:0]         a_range;
+wire[31:0]         a_base;
 
 
 //=======================================================
 // Controls for VGA memory 2
 //=======================================================
-wire [31:0]        2_vga_out_base_address = 32'h0000_0000 ;  // vga base addr
-reg [7:0]          2_vga_sram_writedata ;
-reg [31:0]         2_vga_sram_address; 
-reg                2_vga_sram_write ;
-wire               2_vga_sram_clken = 1'b1;
-wire               2_vga_sram_chipselect = 1'b1;
-signed wire[26:0]  2_ci_init;
-signed wire[26:0]  2_cr_init;
-wire[31:0]         2_range 
-wire[31:0]         2_base;
+reg [7:0]          b_vga_sram_writedata ;
+reg [31:0]         b_vga_sram_address; 
+reg                b_vga_sram_write ;
+wire               b_vga_sram_clken = 1'b1;
+wire               b_vga_sram_chipselect = 1'b1;
+wire signed[26:0]  b_ci_init;
+wire signed[26:0]  b_cr_init;
+wire[31:0]         b_range ;
+wire[31:0]         b_base;
 
 //=======================================================
 // Controls for VGA memory 3
 //=======================================================
-wire [31:0]        3_vga_out_base_address = 32'h0000_0000 ;  // vga base addr
-reg [7:0]          3_vga_sram_writedata ;
-reg [31:0]         3_vga_sram_address; 
-reg                3_vga_sram_write ;
-wire               3_vga_sram_clken = 1'b1;
-wire               3_vga_sram_chipselect = 1'b1;
-signed wire[26:0]  3_ci_init;
-signed wire[26:0]  3_cr_init;
-wire[31:0]         3_range 
-wire[31:0]         3_base;
+reg [7:0]          c_vga_sram_writedata ;
+reg [31:0]         c_vga_sram_address; 
+reg                c_vga_sram_write ;
+wire               c_vga_sram_clken = 1'b1;
+wire               c_vga_sram_chipselect = 1'b1;
+wire signed[26:0]  c_ci_init;
+wire signed[26:0]  c_cr_init;
+wire[31:0]         c_range ;
+wire[31:0]         c_base;
 
 //=======================================================
 // Controls for VGA memory 4
 //=======================================================
-wire [31:0]        4_vga_out_base_address = 32'h0000_0000 ;  // vga base addr
-reg [7:0]          4_vga_sram_writedata ;
-reg [31:0]         4_vga_sram_address; 
-reg                4_vga_sram_write ;
-wire               4_vga_sram_clken = 1'b1;
-wire               4_vga_sram_chipselect = 1'b1;
-signed wire[26:0]  4_ci_init;
-signed wire[26:0]  4_cr_init;
-wire[31:0]         4_range 
-wire[31:0]         4_base;
+reg [7:0]          d_vga_sram_writedata ;
+reg [31:0]         d_vga_sram_address; 
+reg                d_vga_sram_write ;
+wire               d_vga_sram_clken = 1'b1;
+wire               d_vga_sram_chipselect = 1'b1;
+wire signed[26:0]  d_ci_init;
+wire signed[26:0]  d_cr_init;
+wire[31:0]         d_range ;
+wire[31:0]         d_base;
 
 
 //=======================================================
@@ -485,13 +481,15 @@ memory_block mem_block1
 	.clk(CLOCK_50),
 	.rst(~KEY[0]),
 	.max_iterations(max_iterations),
-	.range                (1_range),
-	.base                 (1_base),
-	.vga_sram_address     (1_vga_sram_address),
-	.vga_sram_clken       (1_vga_sram_clken),
-	.vga_sram_chipselect  (1_vga_sram_chipselect),
-	.vga_sram_write       (1_vga_sram_write),
-	.vga_sram_writedata   (1_vga_sram_writedata)
+	.ci_init              (a_ci_init),
+	.cr_init              (a_cr_init),
+	.range                (a_range),
+	.base                 (a_base),
+	.vga_sram_address     (a_vga_sram_address),
+	.vga_sram_clken       (a_vga_sram_clken),
+	.vga_sram_chipselect  (a_vga_sram_chipselect),
+	.vga_sram_write       (a_vga_sram_write),
+	.vga_sram_writedata   (a_vga_sram_writedata)
 );
 
 memory_block mem_block2
@@ -499,13 +497,15 @@ memory_block mem_block2
 	.clk(CLOCK_50),
 	.rst(~KEY[0]),
 	.max_iterations(max_iterations),
-	.range                (2_range),
-	.base                 (2_base),
-	.vga_sram_address     (2_vga_sram_address),
-	.vga_sram_clken       (2_vga_sram_clken),
-	.vga_sram_chipselect  (2_vga_sram_chipselect),
-	.vga_sram_write       (2_vga_sram_write),
-	.vga_sram_writedata   (2_vga_sram_writedata)
+	.ci_init              (b_ci_init),
+	.cr_init              (b_cr_init),
+	.range                (b_range),
+	.base                 (b_base),
+	.vga_sram_address     (b_vga_sram_address),
+	.vga_sram_clken       (b_vga_sram_clken),
+	.vga_sram_chipselect  (b_vga_sram_chipselect),
+	.vga_sram_write       (b_vga_sram_write),
+	.vga_sram_writedata   (b_vga_sram_writedata)
 );
 
 memory_block mem_block3
@@ -513,13 +513,15 @@ memory_block mem_block3
 	.clk(CLOCK_50),
 	.rst(~KEY[0]),
 	.max_iterations(max_iterations),
-	.range                (3_range),
-	.base                 (3_base),
-	.vga_sram_address     (3_vga_sram_address),
-	.vga_sram_clken       (3_vga_sram_clken),
-	.vga_sram_chipselect  (3_vga_sram_chipselect),
-	.vga_sram_write       (3_vga_sram_write),
-	.vga_sram_writedata   (3_vga_sram_writedata)
+	.ci_init              (c_ci_init),
+	.cr_init              (c_cr_init),
+	.range                (c_range),
+	.base                 (c_base),
+	.vga_sram_address     (c_vga_sram_address),
+	.vga_sram_clken       (c_vga_sram_clken),
+	.vga_sram_chipselect  (c_vga_sram_chipselect),
+	.vga_sram_write       (c_vga_sram_write),
+	.vga_sram_writedata   (c_vga_sram_writedata)
 );
 
 memory_block mem_block4
@@ -527,13 +529,15 @@ memory_block mem_block4
 	.clk(CLOCK_50),
 	.rst(~KEY[0]),
 	.max_iterations(max_iterations),
-	.range                (4_range),
-	.base                 (4_base),
-	.vga_sram_address     (4_vga_sram_address),
-	.vga_sram_clken       (4_vga_sram_clken),
-	.vga_sram_chipselect  (4_vga_sram_chipselect),
-	.vga_sram_write       (4_vga_sram_write),
-	.vga_sram_writedata   (4_vga_sram_writedata)
+	.ci_init              (d_ci_init),
+	.cr_init              (d_cr_init),
+	.range                (d_range),
+	.base                 (d_base),
+	.vga_sram_address     (d_vga_sram_address),
+	.vga_sram_clken       (d_vga_sram_clken),
+	.vga_sram_chipselect  (d_vga_sram_chipselect),
+	.vga_sram_write       (d_vga_sram_write),
+	.vga_sram_writedata   (d_vga_sram_writedata)
 );
 
 Computer_System The_System (

@@ -1,10 +1,10 @@
-module memory_block(clk, rst, ci_init, cr_init 
-    max_iterations, range, base 
-    vga_sram_address,   
-    vga_sram_clken,      
-    vga_sram_chipselect, 
-    vga_sram_write,      
-    vga_sram_writedata,
+module memory_block(clk, rst, ci_init, cr_init, 
+    max_iterations, range, base, 
+    c_vga_sram_address,   
+    c_vga_sram_clken,      
+    c_vga_sram_chipselect, 
+    c_vga_sram_write,      
+    c_vga_sram_writedata,
     done );
 
     input clk, rst;
@@ -27,27 +27,32 @@ module memory_block(clk, rst, ci_init, cr_init
     assign c_vga_sram_address = vga_sram_address;
 
     logic [7:0] state;
+    reg [7:0] pixel_color ;
+
+    logic handshake, all_done, done;
+    
+    logic [31:0] iterations;
+    logic [26:0] final_zi, final_zr;
 
     always@(posedge clk) begin 
         // reset state machine and read/write controls
         if (rst) begin
+            vga_sram_address <= base;
             state <= '0 ;
             vga_sram_write <= 1'b0 ; // set to on if a write operation to bus
-            vga_sram_write_1 <= 1'b0;
-            sram_write <= 1'b0 ;
         end
 
         if (state=='0) begin // && ((timer & 15)==0)
             if(done) begin
-                pixel_color = color_reg(iterations1);
+                pixel_color = color_reg(iterations);
                 vga_sram_write <= 1'b1;
                 // compute address
-                vga_sram_address <= vga_out_base_address; 
+                // vga_sram_address <= vga_sram_address;
                 // data
                 vga_sram_writedata <= pixel_color;
 
                 handshake <= '1;
-                vga_out_base_address <= vga_out_base_address+1;
+                vga_sram_address <= vga_sram_address+1;
             end
             if ( all_done ) state <= 8'd22 ; // ending
             else state  <= '1 ;
@@ -55,6 +60,7 @@ module memory_block(clk, rst, ci_init, cr_init
 
         // state to deassert handshake, required to make sure we don't miss values 
         if (state =='1) begin 
+            vga_sram_write <= '0;
             handshake <= '0;
             state <= '0;
         end 
@@ -64,19 +70,9 @@ module memory_block(clk, rst, ci_init, cr_init
         if (state == 8'd22) begin
             // end vga write
             vga_sram_write <= 1'b0;
-            // signal the HPS we are done
-            sram_address <= 8'd0 ;
-            sram_writedata <= 32'b0 ;
-            sram_write <= 1'b1 ;
-            state <= 8'd0 ;
             done <= '1;
         end  
     end
-
-    logic handshake;
-    logic [31:0] iterations;
-    logic [26:0] final_zi, final_zr;
-    logic done, all_done;
 
     iterator iter 
     (
