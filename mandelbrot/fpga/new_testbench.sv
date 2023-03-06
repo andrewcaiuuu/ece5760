@@ -13,7 +13,7 @@ module testbench();
     wire all_done;
     wire handshake;
 
-    wire [31:0] testbench_max_iterations = 32'h32000000;
+    wire [31:0] testbench_max_iterations = 32'd10;
     wire [31:0] testbench_iterations;
     wire testbench_done;
 
@@ -43,6 +43,7 @@ module testbench();
 		reset  = 1'b1;
 		#30
 		reset  = 1'b0;
+		
 	end
 	
 	//Increment 
@@ -53,7 +54,11 @@ module testbench();
     logic c_handshake;
     assign handshake = c_handshake;
     always_comb begin 
+		if (all_done) begin 
+			$stop; 
+		end 
         if ( testbench_done )  begin 
+			$display("%d\n", testbench_iterations);
             c_handshake = '1;
         end 
     end 
@@ -64,8 +69,15 @@ module testbench();
 	//assign testbench_ci = 27'h400000;
 	//assign testbench_cr = 27'hffc00000;
 
-	assign testbench_ci = 27'hffc00000;
-	assign testbench_cr =  27'h400000;
+	// assign testbench_ci = 27'hffc00000;
+	// assign testbench_cr =  27'h400000;
+
+	// assign testbench_ci = 27'h800000;
+	// assign testbench_cr = 27'hff000000;
+
+	assign testbench_ci = 27'h0;
+	assign testbench_cr = 27'h0;
+	
 	//Instantiation of Device Under Test
 	// hook up the sine wave generators
 iterator DUT   (.clk(clk_50), 
@@ -73,7 +85,7 @@ iterator DUT   (.clk(clk_50),
                 .ci_init(testbench_ci),
                 .cr_init(testbench_cr),
                 .max_iterations(testbench_max_iterations),
-                .range(32'h10000),
+                .range(32'h10),
                 .handshake(handshake),
                 .iterations(testbench_iterations),
                 .final_zi(final_zi),
