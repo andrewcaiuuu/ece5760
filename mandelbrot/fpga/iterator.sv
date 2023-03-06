@@ -65,6 +65,15 @@ iterations, final_zi, final_zr, done, all_done);
     always_comb begin 
         case (scurr)
             S_RESET: begin 
+                cur_iterations_in = cur_iterations;
+                temp_zi_in = temp_zi;
+                temp_zr_in = temp_zr;
+                temp_zi_2_in = temp_zi_2;
+                temp_zr_2_in = temp_zr_2;
+                ci_in = ci;
+                cr_in = cr;
+                cur_range_in = cur_range;
+
                 if (~rst )
                     snext = S_DO_ITER;
                 else 
@@ -80,6 +89,15 @@ iterations, final_zi, final_zr, done, all_done);
             end 
 
             S_DO_ITER: begin 
+                cur_iterations_in = cur_iterations;
+                temp_zi_in = temp_zi;
+                temp_zr_in = temp_zr;
+                temp_zi_2_in = temp_zi_2;
+                temp_zr_2_in = temp_zr_2;
+                ci_in = ci;
+                cr_in = cr;
+                cur_range_in = cur_range;
+
                 if(cur_iterations == max_iterations) begin
                     snext = S_WAIT_HANDSHAKE;
                 end
@@ -107,13 +125,28 @@ iterations, final_zi, final_zr, done, all_done);
             end 
 
             S_WAIT_HANDSHAKE: begin 
+                cur_iterations_in = cur_iterations;
+                temp_zi_in = temp_zi;
+                temp_zr_in = temp_zr;
+                temp_zi_2_in = temp_zi_2;
+                temp_zr_2_in = temp_zr_2;
+                ci_in = ci;
+                cr_in = cr;
+                cur_range_in = cur_range;
+
+
                 if ( handshake ) begin 
                     cur_iterations_in = '0;
+                    temp_zi_in = '0;
+                    temp_zr_in = '0;
+                    temp_zi_2_in = '0;
+                    temp_zr_2_in = '0;
+
                     if ( cur_range != 32'b1 ) begin 
                         cur_range_in = cur_range - 1;
                         if ( (cr + cr_incr) > 27'sh800000 ) begin 
-                            if ( (ci + ci_incr) < 27'sh800000 ) begin 
-                                ci_in = ci + ci_incr;
+                            if ( (ci - ci_incr) > 27'shff800000 ) begin 
+                                ci_in = ci - ci_incr;
                                 cr_in = 27'shff000000;
                             end 
                         end
@@ -134,10 +167,30 @@ iterations, final_zi, final_zr, done, all_done);
             end 
 
             S_DONE: begin 
+                cur_iterations_in = cur_iterations;
+                temp_zi_in = temp_zi;
+                temp_zr_in = temp_zr;
+                temp_zi_2_in = temp_zi_2;
+                temp_zr_2_in = temp_zr_2;
+                ci_in = ci;
+                cr_in = cr;
+                cur_range_in = cur_range;
+
                 if ( rst )
                     snext = S_RESET;
                 else
                     snext = S_DONE;
+            end 
+            default: begin 
+                cur_iterations_in = cur_iterations;
+                temp_zi_in = temp_zi;
+                temp_zr_in = temp_zr;
+                temp_zi_2_in = temp_zi_2;
+                temp_zr_2_in = temp_zr_2;
+                ci_in = ci;
+                cr_in = cr;
+                cur_range_in = cur_range;
+
             end 
         endcase 
     end 
@@ -170,6 +223,13 @@ iterations, final_zi, final_zr, done, all_done);
 
             S_DONE: begin 
                 c_all_done = '1;
+                c_done = '0;
+                c_final_zi = '0;
+                c_final_zr = '0; 
+                c_iterations = '0;
+            end 
+            default: begin 
+                c_all_done = '0;
                 c_done = '0;
                 c_final_zi = '0;
                 c_final_zr = '0; 

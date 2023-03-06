@@ -20,6 +20,6 @@ def iterate(ci, cr, max_iterations):
     return iterations
 
 if __name__ == "__main__":
-    ci = -0.5
-    cr = 0.5
+    ci = 1
+    cr = -2
     print(iterate(ci, cr, 100))

@@ -44,12 +44,13 @@ module memory_block(clk, rst, ci_init, cr_init,
 
         if (state=='0) begin // && ((timer & 15)==0)
             if(done) begin
-                pixel_color = color_reg(iterations);
+                // pixel_color = color_reg(iterations);
+                // pixel_color = 8'b_011_001_00;
                 vga_sram_write <= 1'b1;
                 // compute address
                 // vga_sram_address <= vga_sram_address;
                 // data
-                vga_sram_writedata <= pixel_color;
+                vga_sram_writedata <= 8'b_011_001_00;
 
                 handshake <= '1;
                 vga_sram_address <= vga_sram_address+1;
