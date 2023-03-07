@@ -35,6 +35,11 @@ module testbench();
 		#20
 		clk_25  = !clk_25;
 	end
+
+	integer               data_file    ; // file handler
+	integer               scan_file    ; // file handler
+	logic   signed [21:0] captured_data;
+	`define NULL 0  
 	
 	//Intialize and drive signals
 	initial begin
@@ -43,6 +48,12 @@ module testbench();
 		reset  = 1'b1;
 		#30
 		reset  = 1'b0;
+
+		data_file = $fopen("C:/Users/caiuuu/Desktop/ece5760/data_file.dat", "r");
+		if (data_file == `NULL) begin
+			$display("data_file handle was NULL");
+			$finish;
+		end
 		
 	end
 	
@@ -58,7 +69,16 @@ module testbench();
 			$stop; 
 		end 
         if ( testbench_done )  begin 
-			$display("%d\n", testbench_iterations);
+			// $display("%d\n", testbench_iterations);
+			scan_file = $fscanf(data_file, "%d\n", captured_data); 
+			if (!$feof(data_file)) begin
+				//use captured_data as you would any other wire or reg value;
+				if (captured_data != testbench_iterations) begin
+					$display("ERROR: captured_data = %d, testbench_iterations = %d", captured_data, testbench_iterations);
+					$finish;
+				end
+			end
+
             c_handshake = '1;
         end 
     end 

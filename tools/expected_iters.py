@@ -29,6 +29,6 @@ def iterate(ci, cr, max_iterations):
     return iterations
 
 if __name__ == "__main__":
-    for i in range(0x10):
+    for i in range(0x4b000):
         ci, cr = calculate_ci_cr(i, init_cr, init_ci)
         print(iterate(ci, cr, 10))
