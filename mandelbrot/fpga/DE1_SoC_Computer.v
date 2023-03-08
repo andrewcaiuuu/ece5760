@@ -521,7 +521,7 @@ function [7:0] color_reg(input [31:0] iterations);
 	end
 endfunction
 
-wire [31:0] max_iterations = 32'd10;
+wire [31:0] max_iterations = 32'd100;
 
 iterator iter 
 (
