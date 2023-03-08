@@ -16,8 +16,10 @@ iterations, done, all_done);
 
     logic signed [26:0] next_ci, next_cr; 
     logic signed [31:0] cur_range;
-    logic signed [26:0] cr_incr = 27'sh9999;
-    logic signed [26:0] ci_incr = 27'sh8888;
+    // logic signed [26:0] cr_incr = 27'sh9999;
+    // logic signed [26:0] ci_incr = 27'sh8888;
+    logic signed [26:0] cr_incr = 27'sh99D7;
+    logic signed [26:0] ci_incr = 27'sh668F;
 
     logic c_all_done;
     logic iterblock_rst;
@@ -35,9 +37,18 @@ iterations, done, all_done);
         end 
         else begin 
             state <= next_state;
+            if (state == S_START) begin 
+                iterblock_rst <= 1;
+            end 
+            else
+            if (state == S_DO_CALC) begin 
+                iterblock_rst <= 0;
+            end 
+            else
             if (state == S_INCREMENT) begin 
+                iterblock_rst <= 1;
                 cur_range <= cur_range - 1;
-                if ( (next_cr + cr_incr) > 27'sh800000 ) begin 
+                if ( (next_cr + cr_incr) > 27'sh800000 ) begin  
                     next_ci <= next_ci - ci_incr;
                     next_cr <= 27'sh7000000;
                 end
@@ -88,27 +99,27 @@ iterations, done, all_done);
     always_comb begin 
         case (state)
             S_START: begin 
-                iterblock_rst = 1;
+                // iterblock_rst = 1;
                 c_all_done = 0;
             end 
             S_DO_CALC: begin 
-                iterblock_rst = 0;
+                // iterblock_rst = 0;
                 c_all_done = 0;
             end 
             S_WAIT_HANDSHAKE: begin 
-                iterblock_rst = 0;
+                // iterblock_rst = 0;
                 c_all_done = 0;
             end
             S_INCREMENT: begin 
-                iterblock_rst = 1;
+                // iterblock_rst = 1;
                 c_all_done = 0;
             end 
             S_DONE: begin 
-                iterblock_rst = 0;
+                // iterblock_rst = 0;
                 c_all_done = 1;
             end 
             default: begin 
-                 iterblock_rst = 0;
+                //  iterblock_rst = 0;
                 c_all_done = 0;
             end
         endcase

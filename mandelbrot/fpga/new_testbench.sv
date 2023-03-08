@@ -131,7 +131,7 @@ module testbench();
 	// assign testbench_ci = 27'h800000;
 	// assign testbench_cr = 27'hff000000;
 
-	assign testbench_ci = 27'sh0800000;
+	assign testbench_ci = 27'sh800000;
 	assign testbench_cr = 27'sh7000000;
 	
 	//Instantiation of Device Under Test
@@ -141,7 +141,7 @@ iterator DUT   (.clk(clk_50),
                 .ci_init(testbench_ci),
                 .cr_init(testbench_cr),
                 .max_iterations(testbench_max_iterations),
-                .range(32'hfff),
+                .range(32'd642),
                 .handshake(handshake),
                 .iterations(testbench_iterations),
                 .done(testbench_done),
