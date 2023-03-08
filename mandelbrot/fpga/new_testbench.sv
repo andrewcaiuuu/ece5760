@@ -11,17 +11,23 @@ module testbench();
     wire signed [26:0] final_zi;
     wire signed [26:0] final_zr;
     wire all_done;
-    wire handshake;
+    reg handshake;
 
     wire [31:0] testbench_max_iterations = 32'd10;
     wire [31:0] testbench_iterations;
     wire testbench_done;
+	reg [31:0] count, count_in;
+	
+	typedef enum {START, ASSERT_HANDSHAKE} state_type;
+	state_type state, next_state;
 
 	//Initialize clocks and index
 	initial begin
 		clk_50 = 1'b0;
 		clk_25 = 1'b0;
 		index  = 32'd0;
+		count = 32'd0;
+		state = START;
 		//testbench_out = 15'd0 ;
 	end
 	
@@ -38,50 +44,80 @@ module testbench();
 
 	integer               data_file    ; // file handler
 	integer               scan_file    ; // file handler
+	integer               f			   ; // file handler
 	logic   signed [21:0] captured_data;
 	`define NULL 0  
 	
 	//Intialize and drive signals
 	initial begin
+		f = $fopen("output.txt","w");
 		reset  = 1'b0;
 		#10 
 		reset  = 1'b1;
 		#30
 		reset  = 1'b0;
 
-		data_file = $fopen("C:/Users/caiuuu/Desktop/ece5760/data_file.dat", "r");
-		if (data_file == `NULL) begin
-			$display("data_file handle was NULL");
-			$finish;
-		end
+		// data_file = $fopen("C:/Users/caian/Desktop/ece5760/data_file.dat", "r");
+		// if (data_file == `NULL) begin
+		// 	$display("data_file handle was NULL");
+		// 	$finish;
+		// end
 		
 	end
-	
+
+
 	//Increment 
+	logic doing_stuff;
+
 	always @ (posedge clk_50) begin
-		index  <= index + 32'd1;
+		// index  <= index + 32'd1;
+		doing_stuff <= 1'b0;
+		state <= next_state;
+		if (handshake && testbench_done) begin 
+			doing_stuff <= 1'b1;
+			$display("iterations: %d", testbench_iterations);
+			$fwrite(f,"%d\n",testbench_iterations);
+		end 
 	end
-    
-    logic c_handshake;
-    assign handshake = c_handshake;
+
+	always_comb begin 
+		case (state) 
+			START: begin 
+				next_state = START;
+				if ( testbench_done ) begin 
+					next_state = ASSERT_HANDSHAKE;
+				end 
+			end 
+			ASSERT_HANDSHAKE: begin 
+				next_state = START;
+			end
+			default: begin 
+				next_state = START;
+			end
+		endcase 
+	end     
+
+	always_comb begin
+		case (state)
+			START: begin
+				handshake = 1'b0;
+			end
+			ASSERT_HANDSHAKE: begin
+				handshake = 1'b1;
+			end
+			default: begin
+				handshake = 1'b0;
+			end
+		endcase
+	end 
+	
     always_comb begin 
 		if (all_done) begin 
+			$fclose(f);
 			$stop; 
 		end 
-        if ( testbench_done )  begin 
-			// $display("%d\n", testbench_iterations);
-			scan_file = $fscanf(data_file, "%d\n", captured_data); 
-			if (!$feof(data_file)) begin
-				//use captured_data as you would any other wire or reg value;
-				if (captured_data != testbench_iterations) begin
-					$display("ERROR: captured_data = %d, testbench_iterations = %d", captured_data, testbench_iterations);
-					$finish;
-				end
-			end
-
-            c_handshake = '1;
-        end 
     end 
+
 	//assign testbench_ci = 27'b11001100110011001100;
 	//assign testbench_cr = 27'b001100110011001100110011;
 
@@ -95,8 +131,8 @@ module testbench();
 	// assign testbench_ci = 27'h800000;
 	// assign testbench_cr = 27'hff000000;
 
-	assign testbench_ci = 27'h0;
-	assign testbench_cr = 27'h0;
+	assign testbench_ci = 27'sh0800000;
+	assign testbench_cr = 27'sh7000000;
 	
 	//Instantiation of Device Under Test
 	// hook up the sine wave generators
@@ -105,11 +141,9 @@ iterator DUT   (.clk(clk_50),
                 .ci_init(testbench_ci),
                 .cr_init(testbench_cr),
                 .max_iterations(testbench_max_iterations),
-                .range(32'h10),
+                .range(32'h4b000),
                 .handshake(handshake),
                 .iterations(testbench_iterations),
-                .final_zi(final_zi),
-                .final_zr(final_zr),
                 .done(testbench_done),
                 .all_done(all_done)
 				);

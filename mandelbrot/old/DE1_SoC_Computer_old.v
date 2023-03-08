@@ -400,157 +400,155 @@ reg [7:0] state ;
 // rectangle corners
 reg [9:0] x1, y1, x2, y2 ;
 reg [31:0] timer ; // may need to throttle write-rate
+
+
 //=======================================================
-// Controls for VGA memory
+// Controls for VGA memory 1
 //=======================================================
-wire [31:0] vga_out_base_address = 32'h0000_0000 ;  // vga base addr
-reg [7:0] vga_sram_writedata ;
-reg [31:0] vga_sram_address, next_vga_sram_address; 
-reg vga_sram_write ;
-wire vga_sram_clken = 1'b1;
-wire vga_sram_chipselect = 1'b1;
+wire [7:0]          a_vga_sram_writedata ;
+wire [31:0]         a_vga_sram_address; 
+wire                a_vga_sram_write ;
+wire               a_vga_sram_clken = 1'b1;
+wire               a_vga_sram_chipselect = 1'b1;
+wire signed[26:0]  a_ci_init = 32'sh800000;
+wire signed[26:0]  a_cr_init = 32'shff000000;
+wire[31:0]         a_range = 32'h10000;
+wire[31:0]         a_base = 32'h0;
+
+
+//=======================================================
+// Controls for VGA memory 2
+//=======================================================
+wire [7:0]          b_vga_sram_writedata ;
+wire [31:0]         b_vga_sram_address; 
+wire                b_vga_sram_write ;
+wire               b_vga_sram_clken = 1'b1;
+wire               b_vga_sram_chipselect = 1'b1;
+wire signed[26:0]  b_ci_init = 32'sh499999;
+wire signed[26:0]  b_cr_init = 32'shff99999a;
+wire[31:0]         b_range = 32'h10000;
+wire[31:0]         b_base = 32'h10000;
+
+//=======================================================
+// Controls for VGA memory 3
+//=======================================================
+wire [7:0]          c_vga_sram_writedata ;
+wire [31:0]         c_vga_sram_address; 
+wire                c_vga_sram_write ;
+wire               c_vga_sram_clken = 1'b1;
+wire               c_vga_sram_chipselect = 1'b1;
+wire signed[26:0]  c_ci_init = 32'sh133333;
+wire signed[26:0]  c_cr_init = 32'sh333333;
+wire[31:0]         c_range = 32'h10000;
+wire[31:0]         c_base = 32'h20000;
+
+//=======================================================
+// Controls for VGA memory 4
+//=======================================================
+wire [7:0]          d_vga_sram_writedata ;
+wire [31:0]         d_vga_sram_address; 
+wire                d_vga_sram_write ;
+wire               d_vga_sram_clken = 1'b1;
+wire               d_vga_sram_chipselect = 1'b1;
+wire signed[26:0]  d_ci_init = 32'shffdc4445;
+wire signed[26:0]  d_cr_init = 32'shff4ccccd;
+wire[31:0]         d_range = 32'h1000;
+wire[31:0]         d_base = 32'h30000;
+
+
+//=======================================================
+wire [31:0] max_iterations = 32'h32000000;
+//=======================================================
+
 
 //=======================================================
 // pixel address is
 reg [9:0] vga_x_cood, vga_y_cood ;
-reg [7:0] pixel_color ;
+reg [7:0] pixel_color;
 
-//=======================================================
-// iterator logics
-wire done; //out from the iterator
-wire all_done; //out from the iterator
-reg handshake; //in to the iterator
-wire [31:0] iterations;
-//=======================================================
 //=======================================================
 // do the work outlined above
-always @(posedge CLOCK_50) begin // CLOCK_50
 
-   // reset state machine and read/write controls
-	if (~KEY[0]) begin
-		state <= 8'd19 ;
-		vga_sram_write <= 1'b0 ; // set to on if a write operation to bus
-		sram_write <= 1'b0 ;
-		timer <= 0;
-		vga_sram_address <= 0;
-		next_vga_sram_address <= 0;
-		handshake <= 0;
-	end
-	else begin
-		// general purpose tick counter
-		timer <= timer + 1;
-	end
+reg vga_sram_address = 32'h0;
+reg vga_sram_write = 1'b1;
+reg [7:0] vga_sram_address;
+wire vga_sram_clken = 1'b1;
+wire vga_sram_chipselect = 1'b1;
 
-	// --------------------------------------
-	// Now have all info, so:
-	// write to the VGA sram
-
-	if (state==8'd19) begin // && ((timer & 15)==0)
-		if ( done ) begin 
-			vga_sram_write <= 1'b1;
-			// compute address
-			handshake <= 1'b1;
-			vga_sram_address <= next_vga_sram_address; 
-			next_vga_sram_address <= vga_sram_address + 1;
-			// data
-			vga_sram_writedata <= color_reg(iterations);
-		end 
-		
-		else if ( all_done ) begin
-			state <= 8'd22 ; // ending
-		end 
-		else begin
-			handshake <= 1'b0;
-			state <= 8'd19 ;
-		end
-
-		// write a point
-		//state <= 8'd20 ; 
-	end
-	
-	// write a pixel to VGA memory
-//	if (state==20) begin
-//		vga_sram_write <= 1'b1;
-//		// vga_sram_address is combinatorial;
-//		vga_sram_writedata <= pixel_color  ;
-//		// done?
-//		if (vga_x_cood>=x2 && vga_y_cood>=y2) state <= 8'd22 ; // ending
-//		else state  <= 8'd19 ;
-//	end
-	
-	
-	// -- finished: --
-	// -- set up done flag to Qsys sram 0 ---
-	if (state == 8'd22) begin
-		// end vga write
-		vga_sram_write <= 1'b0;
-		// signal the HPS we are done
-		sram_address <= 8'd0 ;
-		sram_writedata <= 32'b0 ;
-		sram_write <= 1'b1 ;
-		state <= 8'd0 ;
-	end  
-	
-end // always @(posedge state_clock)
-
-
-function [7:0] color_reg(input [31:0] iterations);
-	begin
-		if (iterations >= max_iterations) begin
-			color_reg = 8'b_000_000_00 ; // black
-		end
-		else if (iterations >= (max_iterations >>> 1)) begin
-			color_reg = 8'b_011_001_00 ; // white
-		end
-		else if (iterations >= (max_iterations >>> 2)) begin
-			color_reg = 8'b_011_001_00 ;
-		end
-		else if (iterations >= (max_iterations >>> 3)) begin
-			color_reg = 8'b_101_010_01 ;
-		end
-		else if (iterations >= (max_iterations >>> 4)) begin
-			color_reg = 8'b_011_001_01 ;
-		end
-		else if (iterations >= (max_iterations >>> 5)) begin
-			color_reg = 8'b_001_001_01 ;
-		end
-		else if (iterations >= (max_iterations >>> 6)) begin
-			color_reg = 8'b_011_010_10 ;
-		end
-		else if (iterations >= (max_iterations >>> 7)) begin
-			color_reg = 8'b_010_100_10 ;
-		end
-		else if (iterations >= (max_iterations >>> 8)) begin
-			color_reg = 8'b_010_100_10 ;
-		end
-		else begin
-			color_reg = 8'b_010_100_10 ;
-		end
-	end
-endfunction
-
-wire [31:0] max_iterations = 32'd10;
-
-iterator iter 
-(
-	// input
-	.clk(CLOCK_50),
-	.rst(~KEY[0]),
-	.ci_init(27'sh0800000),
-	.cr_init(27'sh7000000),
-	.max_iterations(max_iterations),
-	.range(32'h4b000),
-	.handshake(handshake),
-	// output
-	.iterations(iterations),
-	.done(done),
-	.all_done(all_done)
-);
+always@(posedge CLOCK_50) begin 
+	vga_sram_write <= 1'b1;
+	vga_sram_writedata <= 8'b_011_001_00;
+	vga_sram_address <= vga_sram_address+1;
+end 
 
 //=======================================================
 //  Structural coding
 //=======================================================
 // From Qsys
+
+// memory_block mem_block1
+// (
+// 	.clk(CLOCK_50),
+// 	.rst(~KEY[0]),
+// 	.max_iterations(max_iterations),
+// 	.ci_init              (a_ci_init),
+// 	.cr_init              (a_cr_init),
+// 	.range                (a_range),
+// 	.base                 (a_base),
+// 	.c_vga_sram_address     (a_vga_sram_address),
+// 	.c_vga_sram_clken       (a_vga_sram_clken),
+// 	.c_vga_sram_chipselect  (a_vga_sram_chipselect),
+// 	.c_vga_sram_write       (a_vga_sram_write),
+// 	.c_vga_sram_writedata   (a_vga_sram_writedata)
+// );
+
+// memory_block mem_block2
+// (
+// 	.clk(CLOCK_50),
+// 	.rst(~KEY[0]),
+// 	.max_iterations(max_iterations),
+// 	.ci_init              (b_ci_init),
+// 	.cr_init              (b_cr_init),
+// 	.range                (b_range),
+// 	.base                 (b_base),
+// 	.c_vga_sram_address     (b_vga_sram_address),
+// 	.c_vga_sram_clken       (b_vga_sram_clken),
+// 	.c_vga_sram_chipselect  (b_vga_sram_chipselect),
+// 	.c_vga_sram_write       (b_vga_sram_write),
+// 	.c_vga_sram_writedata   (b_vga_sram_writedata)
+// );
+
+// memory_block mem_block3
+// (
+// 	.clk(CLOCK_50),
+// 	.rst(~KEY[0]),
+// 	.max_iterations(max_iterations),
+// 	.ci_init              (c_ci_init),
+// 	.cr_init              (c_cr_init),
+// 	.range                (c_range),
+// 	.base                 (c_base),
+// 	.c_vga_sram_address     (c_vga_sram_address),
+// 	.c_vga_sram_clken       (c_vga_sram_clken),
+// 	.c_vga_sram_chipselect  (c_vga_sram_chipselect),
+// 	.c_vga_sram_write       (c_vga_sram_write),
+// 	.c_vga_sram_writedata   (c_vga_sram_writedata)
+// );
+
+// memory_block mem_block4
+// (
+// 	.clk(CLOCK_50),
+// 	.rst(~KEY[0]),
+// 	.max_iterations(max_iterations),
+// 	.ci_init              (d_ci_init),
+// 	.cr_init              (d_cr_init),
+// 	.range                (d_range),
+// 	.base                 (d_base),
+// 	.c_vga_sram_address     (d_vga_sram_address),
+// 	.c_vga_sram_clken       (d_vga_sram_clken),
+// 	.c_vga_sram_chipselect  (d_vga_sram_chipselect),
+// 	.c_vga_sram_write       (d_vga_sram_write),
+// 	.c_vga_sram_writedata   (d_vga_sram_writedata)
+// );
 
 Computer_System The_System (
 	////////////////////////////////////
@@ -577,6 +575,13 @@ Computer_System The_System (
 	.onchip_vga_buffer_s1_write      (vga_sram_write),      
 	.onchip_vga_buffer_s1_readdata   (),   // never read from vga here
 	.onchip_vga_buffer_s1_writedata  (vga_sram_writedata),   
+
+	// .onchip_vga_buffer_1_s1_address    (vga_sram_address_1),
+	// .onchip_vga_buffer_1_s1_clken      (vga_sram_clken_1),
+	// .onchip_vga_buffer_1_s1_chipselect (vga_sram_chipselect_1),
+	// .onchip_vga_buffer_1_s1_write      (vga_sram_write_1),
+	// .onchip_vga_buffer_1_s1_readdata   (),
+	// .onchip_vga_buffer_1_s1_writedata  (vga_sram_writedata_1),
 
 	// AV Config
 	.av_config_SCLK							(FPGA_I2C_SCLK),

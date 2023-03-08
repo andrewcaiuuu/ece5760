@@ -1,5 +1,5 @@
-init_cr = 0
-init_ci = 0
+init_cr = -2
+init_ci = 1
 
 
 def calculate_ci_cr(numSteps, init_cr, init_ci):
