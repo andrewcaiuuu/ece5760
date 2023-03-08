@@ -18,8 +18,8 @@ iterations, done, all_done);
     logic signed [31:0] cur_range;
     // logic signed [26:0] cr_incr = 27'sh9999;
     // logic signed [26:0] ci_incr = 27'sh8888;
-    logic signed [26:0] cr_incr = 27'sh99D7;
-    logic signed [26:0] ci_incr = 27'sh668F;
+    logic signed [26:0] cr_incr = 27'sh999a;
+    logic signed [26:0] ci_incr = 27'sh88a4;
 
     logic c_all_done;
     logic iterblock_rst;

@@ -405,7 +405,7 @@ reg [31:0] timer ; // may need to throttle write-rate
 //=======================================================
 wire [31:0] vga_out_base_address = 32'h0000_0000 ;  // vga base addr
 reg [7:0] vga_sram_writedata ;
-reg [31:0] vga_sram_address, next_vga_sram_address; 
+reg [31:0] vga_sram_address; 
 reg vga_sram_write ;
 wire vga_sram_clken = 1'b1;
 wire vga_sram_chipselect = 1'b1;
@@ -416,59 +416,177 @@ reg [9:0] vga_x_cood, vga_y_cood ;
 reg [7:0] pixel_color ;
 
 //=======================================================
-// iterator logics
-wire done; //out from the iterator
-wire all_done; //out from the iterator
-reg handshake; //in to the iterator
-wire [31:0] iterations;
-//=======================================================
-//=======================================================
 // do the work outlined above
 always @(posedge CLOCK_50) begin // CLOCK_50
 
    // reset state machine and read/write controls
 	if (~KEY[0]) begin
-		state <= 8'd19 ;
+		state <= 0 ;
 		vga_sram_write <= 1'b0 ; // set to on if a write operation to bus
 		sram_write <= 1'b0 ;
 		timer <= 0;
-		vga_sram_address <= 0;
-		next_vga_sram_address <= 0;
-		handshake <= 0;
 	end
 	else begin
 		// general purpose tick counter
 		timer <= timer + 1;
 	end
+	
+	// --------------------------------------
+	// did the HPS send a command
+	// --- set up read for HPS data-ready ---
+	if (state == 8'd0) begin
+		sram_address <= 8'd0 ;
+		sram_write <= 1'b0 ;
+		state <= 8'd1 ;
+	end
+	// wait 1 for read
+	if (state == 8'd1) begin
+		state <= 8'd2 ;
+	end
+	// do data-read read
+	if (state == 8'd2) begin
+		data_buffer <= sram_readdata ;
+		sram_write <= 1'b0 ;
+		state <= 8'd3 ;
+	end 
+	
+	// --------------------------------------
+	// --- is there new command? --- 
+	if (state == 8'd3) begin
+		// if (addr 0)==0 try again
+		if (data_buffer==0) state <= 8'd0 ;
+		// if nonzero, do the add
+		else state <= 8'd4 ;
+	end 
+	
+	// --------------------------------------
+	// --- read first Qsys sram: x1 ---
+	if (state == 8'd4) begin
+		sram_address <= 8'd1 ;
+		sram_write <= 1'b0 ;
+		state <= 8'd5 ;
+	end
+	// wait 1
+	if (state == 8'd5) begin
+		state <= 8'd6 ;
+	end
+	// do data-read x1 
+	if (state == 8'd6) begin
+		x1 <= sram_readdata ;
+		sram_write <= 1'b0 ;
+		state <= 8'd7 ;
+	end 
+	
+	// --------------------------------------
+	// --- read second Qsys sram: y1 ---
+	if (state == 8'd7) begin
+		sram_address <= 8'd2 ;
+		sram_write <= 1'b0 ;
+		state <= 8'd8 ;
+	end
+	// wait 1
+	if (state == 8'd8) begin
+		state <= 8'd9 ;
+	end
+	// do data-read y1
+	if (state == 8'd9) begin
+		y1 <= sram_readdata ;
+		sram_write <= 1'b0 ;
+		state <= 8'd10 ;
+	end 
+	
+	// --------------------------------------
+	// --- read third Qsys sram: x2 ---
+	if (state == 8'd10) begin
+		sram_address <= 8'd3 ;
+		sram_write <= 1'b0 ;
+		state <= 8'd11 ;
+	end
+	// wait 1
+	if (state == 8'd11) begin
+		state <= 8'd12 ;
+	end
+	// do data-read x2
+	if (state == 8'd12) begin
+		x2 <= sram_readdata ;
+		sram_write <= 1'b0 ;
+		state <= 8'd13 ;
+	end 
+	
+	// --------------------------------------
+	// --- read fourth Qsys sram: y2 ---
+	if (state == 8'd13) begin
+		sram_address <= 8'd4 ;
+		sram_write <= 1'b0 ;
+		state <= 8'd14 ;
+	end
+	// wait 1
+	if (state == 8'd14) begin
+		state <= 8'd15 ;
+	end
+	// do data-read y2
+	if (state == 8'd15) begin
+		y2 <= sram_readdata ;
+		sram_write <= 1'b0 ;
+		state <= 8'd16 ;
+	end 
+	
+	// --------------------------------------
+	// --- read fifth Qsys sram: color ---
+	if (state == 8'd16) begin
+		sram_address <= 8'd5 ;
+		sram_write <= 1'b0 ;
+		state <= 8'd17 ;
+	end
+	// wait 1
+	if (state == 8'd17) begin
+		state <= 8'd18 ;
+	end
+	// do data-read y2
+	if (state == 8'd18) begin
+		pixel_color <= sram_readdata ;
+		sram_write <= 1'b0 ;
+		state <= 8'd19 ;
+		// initialize pixel state machine
+		// for the next phase of the state machine
+		vga_x_cood <= x1 ;
+		vga_y_cood <= y1 ;
+	end 
+	
 
 	// --------------------------------------
 	// Now have all info, so:
 	// write to the VGA sram
 
 	if (state==8'd19) begin // && ((timer & 15)==0)
-		state <= 8'd20;
-		if ( done ) begin 
-			vga_sram_write <= 1'b1;
-			// compute address
-			handshake <= 1'b1;
-			vga_sram_address <= next_vga_sram_address; 
-			next_vga_sram_address <= vga_sram_address + 1;
-			// data
-			vga_sram_writedata <= color_reg(iterations);
-		end 
-		
-		else if ( all_done ) begin
-			state <= 8'd22 ; // ending
-		end 
+		vga_sram_write <= 1'b1;
+		// compute address
+	   vga_sram_address <= vga_out_base_address + {22'b0, vga_x_cood} + ({22'b0,vga_y_cood}*640) ; 
+		// data
+		vga_sram_writedata <= pixel_color  ;
+		// iterate through all x for each y in the list
+		if (vga_x_cood < x2) begin
+			vga_x_cood <= vga_x_cood + 10'd1 ;
+		end
+		else begin
+			vga_x_cood <= x1 ;
+			vga_y_cood <= vga_y_cood + 10'd1 ;	
+		end
+		if (vga_x_cood>=x2 && vga_y_cood>=y2) state <= 8'd22 ; // ending
+		else state  <= 8'd19 ;
+		// write a point
+		//state <= 8'd20 ; 
 	end
 	
 	// write a pixel to VGA memory
-	// make sure its written, then assert handshake low
-	if (state==20) begin
-		handshake <= 1'b0;
-		vga_sram_write <= 1'b0;
-		state  <= 8'd19 ;
-	end
+//	if (state==20) begin
+//		vga_sram_write <= 1'b1;
+//		// vga_sram_address is combinatorial;
+//		vga_sram_writedata <= pixel_color  ;
+//		// done?
+//		if (vga_x_cood>=x2 && vga_y_cood>=y2) state <= 8'd22 ; // ending
+//		else state  <= 8'd19 ;
+//	end
 	
 	
 	// -- finished: --
@@ -485,59 +603,6 @@ always @(posedge CLOCK_50) begin // CLOCK_50
 	
 end // always @(posedge state_clock)
 
-
-function [7:0] color_reg(input [31:0] iterations);
-	begin
-		if (iterations >= max_iterations) begin
-			color_reg = 8'b_000_000_00 ; // black
-		end
-		else if (iterations >= (max_iterations >>> 1)) begin
-			color_reg = 8'b_011_001_00 ; // white
-		end
-		else if (iterations >= (max_iterations >>> 2)) begin
-			color_reg = 8'b_011_001_00 ;
-		end
-		else if (iterations >= (max_iterations >>> 3)) begin
-			color_reg = 8'b_101_010_01 ;
-		end
-		else if (iterations >= (max_iterations >>> 4)) begin
-			color_reg = 8'b_011_001_01 ;
-		end
-		else if (iterations >= (max_iterations >>> 5)) begin
-			color_reg = 8'b_001_001_01 ;
-		end
-		else if (iterations >= (max_iterations >>> 6)) begin
-			color_reg = 8'b_011_010_10 ;
-		end
-		else if (iterations >= (max_iterations >>> 7)) begin
-			color_reg = 8'b_010_100_10 ;
-		end
-		else if (iterations >= (max_iterations >>> 8)) begin
-			color_reg = 8'b_010_100_10 ;
-		end
-		else begin
-			color_reg = 8'b_010_100_10 ;
-		end
-	end
-endfunction
-
-wire [31:0] max_iterations = 32'd100;
-
-iterator iter 
-(
-	// input
-	.clk(CLOCK_50),
-	.rst(~KEY[0]),
-	.ci_init(27'sh0800000),
-	.cr_init(27'sh7000000),
-	.max_iterations(max_iterations),
-	.range(32'h4b000),
-	.handshake(handshake),
-	// output
-	.iterations(iterations),
-	.done(done),
-	.all_done(all_done)
-);
 
 //=======================================================
 //  Structural coding
