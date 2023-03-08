@@ -446,6 +446,7 @@ always @(posedge CLOCK_50) begin // CLOCK_50
 	// write to the VGA sram
 
 	if (state==8'd19) begin // && ((timer & 15)==0)
+		state <= 8'd20;
 		if ( done ) begin 
 			vga_sram_write <= 1'b1;
 			// compute address
@@ -459,24 +460,15 @@ always @(posedge CLOCK_50) begin // CLOCK_50
 		else if ( all_done ) begin
 			state <= 8'd22 ; // ending
 		end 
-		else begin
-			handshake <= 1'b0;
-			state <= 8'd19 ;
-		end
-
-		// write a point
-		//state <= 8'd20 ; 
 	end
 	
 	// write a pixel to VGA memory
-//	if (state==20) begin
-//		vga_sram_write <= 1'b1;
-//		// vga_sram_address is combinatorial;
-//		vga_sram_writedata <= pixel_color  ;
-//		// done?
-//		if (vga_x_cood>=x2 && vga_y_cood>=y2) state <= 8'd22 ; // ending
-//		else state  <= 8'd19 ;
-//	end
+	// make sure its written, then assert handshake low
+	if (state==20) begin
+		handshake <= 1'b0;
+		vga_sram_write <= 1'b0;
+		state  <= 8'd19 ;
+	end
 	
 	
 	// -- finished: --
