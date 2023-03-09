@@ -378,12 +378,11 @@ wire vga_pll ;
 reg  vga_reset ;
 
 // M10k memory control and data
-wire 		[7:0] 	M10k_out1, M10k_out2 ;
-reg 		[7:0] 	M10k_out;
-reg 		[7:0] 	write_data, write_data1, write_data2 ;
-reg 		[18:0] 	write_address, write_address1, next_write_address1, write_address2, next_write_address2 ;
+wire 		[7:0] 	M10k_out ;
+reg 		[7:0] 	write_data, write_data1 ;
+reg 		[18:0] 	write_address, write_address1, next_write_address1 ;
 reg 		[18:0] 	read_address ;
-reg 					write_enable, write_enable1, write_enable2 ;
+reg 					write_enable, write_enable1 ;
 
 // M10k memory clock
 wire 					M10k_pll ;
@@ -398,12 +397,12 @@ reg 		[9:0] 	y_coord ;
 wire 		[9:0]		next_x ;
 wire 		[9:0] 	next_y ;
 
-reg state1, state2;
+reg state1;
 always@(posedge M10k_pll) begin
 	// Zero everything in reset
 	if (~KEY[0]) begin
 		arbiter_state <= 8'd_0 ;
-		// vga_reset <= 1'b_1 ;
+		vga_reset <= 1'b_1 ;
 		x_coord <= 10'd_0 ;
 		y_coord <= 10'd_0 ;
 		state1 <= 8'd0 ;
@@ -413,7 +412,7 @@ always@(posedge M10k_pll) begin
 	// Otherwiser repeatedly write a large checkerboard to memory
 	else begin
 		if ( all_done1 ) begin 
-			// vga_reset <= 1'b_0;
+			vga_reset <= 1'b_0;
 			write_enable1 <= 1'b0;
 		end
 		else begin 
@@ -437,103 +436,13 @@ always@(posedge M10k_pll) begin
 		end 
 	end
 end
-// for second iterator
-always@(posedge M10k_pll) begin 
-	// Zero everything in reset
-	if (~KEY[0]) begin
-		state2 <= 8'd0 ;
-		write_address2 <= 8'd0;
-		next_write_address2 <= 8'd0;
-	end
-	// Otherwiser repeatedly write a large checkerboard to memory
-	else begin
-		if ( all_done2 ) begin 
-			// vga_reset <= 1'b_0;
-			write_enable2 <= 1'b0;
-		end
-		else begin 
-			if (state2 == 8'd0) begin 
-				state2 <= 8'd1;
-				if ( done2 ) begin 
-					write_enable2 <= 1'b1;
-					// compute address
-					handshake2 <= 1'b1;
-					write_address2 <= next_write_address2; 
-					next_write_address2 <= write_address2 + 1;
-					// data
-					write_data2 <= color_reg(iterations2);
-				end 
-			end 
-			if (state2 == 8'd1) begin 
-				handshake2 <= 1'b0;
-				write_enable2 <= 1'b0;
-				state2  <= 8'd0 ;
-			end
-		end 
-	end
-
-end 
-
-
-// MUXING LOGIC OUTSIDE OF VGA STATE MACHINE
-// KINDA SHIT 
-reg which_memblock;
-
-always@(posedge M10k_pll) begin 
-	if (~KEY[0]) begin 
-		vga_reset <= 1'b_1 ;
-	end 
-	else if ( all_done2 & all_done1 ) begin 
-		// when all of the iterators are done we write the display
-		vga_reset <= 1'b_0;
-	end 
-end 
-
-always@(*) begin 
-	// default iterator is outputting next_y, next_x,
-	// i was lazy so just using this for now to calculate true range
-	// then do muxing on this value
-	if (( (19'd_640*next_y) + next_x ) > 19'd153599) begin 
-		which_memblock = 1;
-	end 
-	else begin 
-		which_memblock = 0;
-	end
-end
-
-always@(*) begin 
-	// does parallel muxing using case statement
-	case ( which_memblock )
-		0: begin 
-			M10k_out = M10k_out1;
-			read_address = (19'd_640*next_y) + next_x;
-		end
-		1: begin 
-			M10k_out = M10k_out2;
-			// subtracting the size of the first memory block
-			read_address = (19'd_640*next_y) + next_x - 19'd153600;
-		end
-		default: begin 
-			M10k_out = M10k_out1;
-			read_address = (19'd_640*next_y) + next_x;
-		end 
-	endcase
-end 
 
 // Instantiate memory
-M10K_1000_8 pixel_data1( .q(M10k_out1), // contains pixel color (8 bit) for display
+M10K_1000_8 pixel_data( .q(M10k_out), // contains pixel color (8 bit) for display
 								.d(write_data1),
 								.write_address(write_address1),
-								.read_address(read_address),
+								.read_address((19'd_640*next_y) + next_x),
 								.we(write_enable1),
-								.clk(M10k_pll)
-);
-
-M10K_1000_8 pixel_data2( .q(M10k_out2), // contains pixel color (8 bit) for display
-								.d(write_data2),
-								.write_address(write_address2),
-								.read_address(read_address),
-								.we(write_enable2),
 								.clk(M10k_pll)
 );
 
@@ -553,45 +462,9 @@ vga_driver DUT   (	.clock(vga_pll),
 							.blank(VGA_BLANK_N)
 );
 
-function [7:0] color_reg(input [31:0] iterations);
-	begin
-		if (iterations >= max_iterations) begin
-			color_reg = 8'b_000_000_00 ; // black
-		end
-		else if (iterations >= (max_iterations >>> 1)) begin
-			color_reg = 8'b_011_001_00 ; // white
-		end
-		else if (iterations >= (max_iterations >>> 2)) begin
-			color_reg = 8'b_011_001_00 ;
-		end
-		else if (iterations >= (max_iterations >>> 3)) begin
-			color_reg = 8'b_101_010_01 ;
-		end
-		else if (iterations >= (max_iterations >>> 4)) begin
-			color_reg = 8'b_011_001_01 ;
-		end
-		else if (iterations >= (max_iterations >>> 5)) begin
-			color_reg = 8'b_001_001_01 ;
-		end
-		else if (iterations >= (max_iterations >>> 6)) begin
-			color_reg = 8'b_011_010_10 ;
-		end
-		else if (iterations >= (max_iterations >>> 7)) begin
-			color_reg = 8'b_010_100_10 ;
-		end
-		else if (iterations >= (max_iterations >>> 8)) begin
-			color_reg = 8'b_010_100_10 ;
-		end
-		else begin
-			color_reg = 8'b_010_100_10 ;
-		end
-	end
-endfunction
-
 // Instantiate Iterator
 wire [31:0] max_iterations = 32'd100;
-wire done1, all_done1;
-reg handshake1;
+wire done1, all_done1, handshake1;
 wire [31:0] iterations1;
 iterator iter1 
 (
@@ -601,32 +474,12 @@ iterator iter1
 	.ci_init(27'sh0800000),
 	.cr_init(27'sh7000000),
 	.max_iterations(max_iterations),
-	.range(32'd153600),
+	.range(32'd307200),
 	.handshake(handshake1),
 	// output
 	.iterations(iterations1),
 	.done(done1),
 	.all_done(all_done1)
-);
-
-// Instantiate Iterator
-wire done2, all_done2;
-reg handshake2;
-wire [31:0] iterations2;
-iterator iter2 
-(
-	// input
-	.clk(M10k_pll),
-	.rst(~KEY[0]),
-	.ci_init(27'sh0),
-	.cr_init(27'sh7000000),
-	.max_iterations(max_iterations),
-	.range(32'd153600),
-	.handshake(handshake2),
-	// output
-	.iterations(iterations2),
-	.done(done2),
-	.all_done(all_done2)
 );
 
 
@@ -959,7 +812,7 @@ module M10K_1000_8(
 );
 	 // force M10K ram style
 	 // 307200 words of 8 bits
-    reg [7:0] mem [153600:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
+    reg [7:0] mem [307200:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
 	 
     always @ (posedge clk) begin
         if (we) begin
@@ -968,3 +821,38 @@ module M10K_1000_8(
         q <= mem[read_address]; // q doesn't get d in this clock cycle
     end
 endmodule
+
+function [7:0] color_reg(input [31:0] iterations);
+	begin
+		if (iterations >= max_iterations) begin
+			color_reg = 8'b_000_000_00 ; // black
+		end
+		else if (iterations >= (max_iterations >>> 1)) begin
+			color_reg = 8'b_011_001_00 ; // white
+		end
+		else if (iterations >= (max_iterations >>> 2)) begin
+			color_reg = 8'b_011_001_00 ;
+		end
+		else if (iterations >= (max_iterations >>> 3)) begin
+			color_reg = 8'b_101_010_01 ;
+		end
+		else if (iterations >= (max_iterations >>> 4)) begin
+			color_reg = 8'b_011_001_01 ;
+		end
+		else if (iterations >= (max_iterations >>> 5)) begin
+			color_reg = 8'b_001_001_01 ;
+		end
+		else if (iterations >= (max_iterations >>> 6)) begin
+			color_reg = 8'b_011_010_10 ;
+		end
+		else if (iterations >= (max_iterations >>> 7)) begin
+			color_reg = 8'b_010_100_10 ;
+		end
+		else if (iterations >= (max_iterations >>> 8)) begin
+			color_reg = 8'b_010_100_10 ;
+		end
+		else begin
+			color_reg = 8'b_010_100_10 ;
+		end
+	end
+endfunction

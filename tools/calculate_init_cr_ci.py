@@ -10,7 +10,7 @@ def calculate_ci_cr(numSteps, init_cr, init_ci):
 
 
 if __name__ == "__main__":
-    print(calculate_ci_cr(262144, init_cr, init_ci))
+    print(calculate_ci_cr(153600, init_cr, init_ci))
 
 
 
