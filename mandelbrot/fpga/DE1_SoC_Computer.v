@@ -395,20 +395,22 @@ reg [7:0] sram_address;
 reg sram_write ;
 wire sram_clken = 1'b1;
 wire sram_chipselect = 1'b1;
-reg [7:0] state ;
+reg [7:0] state, b_state ;
 
 // rectangle corners
 reg [9:0] x1, y1, x2, y2 ;
-reg [31:0] timer ; // may need to throttle write-rate
+reg [31:0] timer, b_timer ; // may need to throttle write-rate
 //=======================================================
 // Controls for VGA memory
 //=======================================================
 wire [31:0] vga_out_base_address = 32'h0000_0000 ;  // vga base addr
-reg [7:0] vga_sram_writedata ;
-reg [31:0] vga_sram_address, next_vga_sram_address; 
-reg vga_sram_write ;
+reg [7:0] vga_sram_writedata, b_vga_sram_writedata ;
+reg [31:0] vga_sram_address, next_vga_sram_address, b_vga_sram_address, b_next_vga_sram_address; 
+reg vga_sram_write, b_vga_sram_write ;
 wire vga_sram_clken = 1'b1;
 wire vga_sram_chipselect = 1'b1;
+wire b_vga_sram_clken = 1'b1;
+wire b_vga_sram_chipselect = 1'b1;
 
 //=======================================================
 // pixel address is
@@ -417,10 +419,10 @@ reg [7:0] pixel_color ;
 
 //=======================================================
 // iterator logics
-wire done; //out from the iterator
-wire all_done; //out from the iterator
-reg handshake; //in to the iterator
-wire [31:0] iterations;
+wire done, b_done; //out from the iterator
+wire all_done, b_all_done; //out from the iterator
+reg handshake, b_handshake; //in to the iterator
+wire [31:0] iterations, b_iterations;
 //=======================================================
 //=======================================================
 // do the work outlined above
@@ -485,6 +487,69 @@ always @(posedge CLOCK_50) begin // CLOCK_50
 	
 end // always @(posedge state_clock)
 
+// second state machine
+always @(posedge CLOCK_50) begin // CLOCK_50
+
+   // reset state machine and read/write controls
+	if (~KEY[0]) begin
+		b_state <= 8'd19 ;
+		b_vga_sram_write <= 1'b0 ; // set to on if a write operation to bus
+		sram_write <= 1'b0 ;
+		b_timer <= 0;
+		b_vga_sram_address <= 0;
+		b_next_vga_sram_address <= 0;
+		b_handshake <= 0;
+	end
+	else begin
+		// general purpose tick counter
+		b_timer <= b_timer + 1;
+	end
+
+	// --------------------------------------
+	// Now have all info, so:
+	// write to the VGA sram
+
+	if (b_state==8'd19) begin // && ((timer & 15)==0)
+		b_state <= 8'd20;
+		if ( b_done ) begin 
+			b_vga_sram_write <= 1'b1;
+			// compute address
+			b_handshake <= 1'b1;
+			b_vga_sram_address <= next_vga_sram_address; 
+			b_next_vga_sram_address <= vga_sram_address + 1;
+			// data
+			b_vga_sram_writedata <= color_reg(b_iterations);
+		end 
+		
+		else if ( b_all_done ) begin
+			b_state <= 8'd22 ; // ending
+		end 
+	end
+	
+	// write a pixel to VGA memory
+	// make sure its written, then assert handshake low
+	if (b_state==20) begin
+		b_handshake <= 1'b0;
+		b_vga_sram_write <= 1'b0;
+		b_state  <= 8'd19 ;
+	end
+	
+	
+	// -- finished: --
+	// -- set up done flag to Qsys sram 0 ---
+	if (b_state == 8'd22) begin
+		// end vga write
+		b_vga_sram_write <= 1'b0;
+		// signal the HPS we are done
+		sram_address <= 8'd0 ;
+		sram_writedata <= 32'b0 ;
+		sram_write <= 1'b1 ;
+		b_state <= 8'd0 ;
+	end  
+	
+end // always @(posedge state_clock)
+
+
 
 function [7:0] color_reg(input [31:0] iterations);
 	begin
@@ -531,12 +596,28 @@ iterator iter
 	.ci_init(27'sh0800000),
 	.cr_init(27'sh7000000),
 	.max_iterations(max_iterations),
-	.range(32'h4b000),
+	.range(32'd262144),
 	.handshake(handshake),
 	// output
 	.iterations(iterations),
 	.done(done),
 	.all_done(all_done)
+);
+
+iterator iter1
+(
+	// input
+	.clk(CLOCK_50),
+	.rst(~KEY[0]),
+	.ci_init(27'sh7A5DDDE),
+	.cr_init(27'sh7E66667),
+	.max_iterations(max_iterations),
+	.range(32'd45056),
+	.handshake(b_handshake),
+	// output
+	.iterations(b_iterations),
+	.done(b_done),
+	.all_done(b_all_done)
 );
 
 //=======================================================
@@ -569,6 +650,14 @@ Computer_System The_System (
 	.onchip_vga_buffer_s1_write      (vga_sram_write),      
 	.onchip_vga_buffer_s1_readdata   (),   // never read from vga here
 	.onchip_vga_buffer_s1_writedata  (vga_sram_writedata),   
+
+	//  sram to video
+	.onchip_vga_buffer_1_s1_address    (b_vga_sram_address),    
+	.onchip_vga_buffer_1_s1_clken      (b_vga_sram_clken),      
+	.onchip_vga_buffer_1_s1_chipselect (b_vga_sram_chipselect), 
+	.onchip_vga_buffer_1_s1_write      (b_vga_sram_write),      
+	.onchip_vga_buffer_1_s1_readdata   (),   // never read from vga here
+	.onchip_vga_buffer_1_s1_writedata  (b_vga_sram_writedata),   
 
 	// AV Config
 	.av_config_SCLK							(FPGA_I2C_SCLK),
