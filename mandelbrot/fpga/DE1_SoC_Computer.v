@@ -490,7 +490,7 @@ always@(posedge M10k_pll) begin
 end 
 
 always@(*) begin 
-	// default iterator is outputting next_y, next_x,
+	// default vga driver is outputting next_y, next_x,
 	// i was lazy so just using this for now to calculate true range
 	// then do muxing on this value
 	if (( (19'd_640*next_y) + next_x ) > 19'd153599) begin 
