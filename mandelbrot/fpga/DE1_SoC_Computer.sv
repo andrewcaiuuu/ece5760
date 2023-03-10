@@ -625,6 +625,9 @@ reg signed [26:0] zoom_center_cr = 0;
 reg signed [26:0] cr_incr, ci_incr, cr_stop, cr_reset;
 reg [7:0] allowed_zoom_levels;
 integer ii, jj;
+reg[26:0] numSteps[0:9] = '{27'sh0, 27'sh7800, 27'shf000, 27'sh16800, 27'sh1e000, 27'sh25800, 27'sh2d000, 27'sh34800, 27'sh3c000, 27'sh43800};
+
+
 always@(posedge M10k_pll) begin 
 	LEDR <= 10'd0;
 	iter_rst <= 1'b_0;
@@ -654,14 +657,14 @@ always@(posedge M10k_pll) begin
 				allowed_zoom_levels <= allowed_zoom_levels - 1;
 				// cur_incr <= cur_incr << 1;
 				
-				for(ii=0; ii<10; ii=ii+1) begin 
-					cur_ci[ii] <= (cur_ci[ii] << 1) + zoom_center_ci;
-					cur_cr[ii] <= (cur_ci[ii] << 1) + zoom_center_cr;
+				for(ii=1; ii<10; ii=ii+1) begin 
+					cur_ci[ii] <= update_ci(jj*27'd30720,cur_ci[0], ci_incr<<<1);
+					cur_cr[ii] <= update_cr(jj*27'd30720,cur_cr[0], cr_incr<<<1);
 				end
-				cr_incr  <= cr_incr<<1;
-				ci_incr  <= ci_incr<<1;
+				cr_incr  <= cr_incr<<<1;
+				ci_incr  <= ci_incr<<<1;
 				// cr_stop  <= cr_stop<<1;
-				cr_reset<= cr_reset<<1;
+				// cr_reset<= cr_reset<<1;
 			end
 			// KEY 2 is for zoom in
 			else if (~KEY[2] && (allowed_zoom_levels < 8'd10)) begin 
@@ -671,18 +674,61 @@ always@(posedge M10k_pll) begin
 				allowed_zoom_levels <= allowed_zoom_levels + 1;
 				// cur_incr <= cur_incr << 1;
 				
-				for(jj=0; jj<10; jj=jj+1) begin 
-					cur_ci[jj] <= (cur_ci[jj] >>> 1) + zoom_center_ci;
-					cur_cr[jj] <= (cur_ci[jj] >>> 1) + zoom_center_cr;
+				for(jj=1; jj<10; jj=jj+1) begin 
+					cur_ci[jj] <= update_ci(jj*27'd30720,cur_ci[0], ci_incr>>1);
+					cur_cr[jj] <= update_cr(jj*27'd30720,cur_cr[0], cr_incr>>1);
 				end
-				cr_incr  <= cr_incr>>>1;
-				ci_incr  <= ci_incr>>>1;
+
+				cr_incr  <= cr_incr>>1; //divide cr by 2
+				ci_incr  <= ci_incr>>1; //divide ci by 2
 				// cr_stop  <= cr_stop>>>1;
-				cr_reset<= cr_reset>>>1;
+				// cr_reset <= zoom_center_cr;
 			end
 		end
 	end 
 end 
+
+
+function reg [26:0] update_ci(
+    input reg [26:0] numSteps,
+    input reg [26:0] init_ci,
+    input reg [26:0] ci_incr
+);
+	begin
+		reg [8:0] div = divSixForty(numSteps);
+		reg [26:0] new_ci = init_ci - (ci_incr * div);
+		return new_ci;
+	end
+endfunction
+
+function reg[26:0] divSixForty(input reg[26:0] val);
+	begin
+		reg[26:0] remainder = val;
+		reg[8:0] res = 9'b0;
+		reg [9:0] count = 0; //verilog terminbate
+		while((count < 10'd50) && (remainder >= 27'd640)) begin
+			remainder = remainder - 27'd640;
+			res = res+1;
+			count = count + 1;
+		end 
+		return res;
+	end
+endfunction
+
+
+function reg [26:0] update_cr(
+    input reg [26:0] numSteps,
+    input reg [26:0] init_cr,
+    input reg [26:0] cr_incr
+);
+	begin 
+		 reg [26:0] new_cr=init_cr + (cr_incr * (numSteps % 640));
+		 return new_cr;
+	end
+endfunction
+
+
+
 integer x;
 always_comb begin
 	all_done_flag = 1'b1;
@@ -690,6 +736,10 @@ always_comb begin
 		all_done_flag = all_done_flag & all_done[x];
 	end
 end
+
+
+
+
 
 
 // always@(*) begin 

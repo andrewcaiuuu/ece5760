@@ -28,7 +28,7 @@ cr_stop, cr_reset
     // I AM RIGHT
     // logic signed [26:0] cr_incr = 27'sh999a;
     // logic signed [26:0] ci_incr = 27'sh88a4;
-    logic signed [8:0] counter_639;
+    logic signed [9:0] counter_639;
     logic c_all_done;
     logic iterblock_rst;
     assign all_done = c_all_done;
@@ -42,35 +42,37 @@ cr_stop, cr_reset
             cur_range <= range;
             next_ci <= ci_init;
             next_cr <= cr_init;
-            counter_639 <= 8'd639;
+            counter_639 <= 10'd640;
         end 
         else begin 
             state <= next_state;
             if (state == S_START) begin 
                 iterblock_rst <= 1;
             end 
-            else
-            if (state == S_DO_CALC) begin 
+            else if (state == S_DO_CALC) begin 
                 iterblock_rst <= 0;
             end 
-            else
-            if (state == S_INCREMENT) begin 
+            else if (state == S_INCREMENT) begin 
                 iterblock_rst <= 1;
                 cur_range <= cur_range - 1;
-                // if ( (next_cr + cr_incr) > 27'sh800000 ) begin  
-                //     next_ci <= next_ci - ci_incr;
-                //     next_cr <= 27'sh7000000;
-                // end
+
                 if ( counter_639 == 1 ) begin  
-                    counter_639 <= 8'd639;
+                    counter_639 <= 10'd640;
                     next_ci <= next_ci - ci_incr;
                     next_cr <= cr_reset;
                 end
-
                 else begin 
                     next_cr <= next_cr + cr_incr;
                     counter_639 <= counter_639 - 1;
                 end 
+                // if ( (next_cr + cr_incr) > 27'sh800000 ) begin  
+                //      next_ci <= next_ci - ci_incr;
+                //      next_cr <= 27'sh7000000;
+                // end
+                // else begin 
+                //     next_cr <= next_cr + cr_incr;
+                //     counter_639 <= counter_639 - 1;
+                // end 
             end 
         end 
     end
