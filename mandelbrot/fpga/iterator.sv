@@ -1,6 +1,8 @@
 module iterator(clk, rst, ci_init, 
 cr_init, max_iterations, range,  handshake, 
-iterations, done, all_done);
+iterations, done, all_done, cr_incr, ci_incr, 
+cr_stop, cr_reset
+);
     input clk;
     input rst;
 
@@ -9,6 +11,10 @@ iterations, done, all_done);
     input [31:0] max_iterations;
     input signed [31:0] range;
     input handshake;
+    input signed [26:0] cr_incr;
+    input signed [26:0] ci_incr;
+    input signed [26:0] cr_stop;
+    input signed [26:0] cr_reset;
 
     output [31:0] iterations;
     output done; // one iter
@@ -18,9 +24,11 @@ iterations, done, all_done);
     logic signed [31:0] cur_range;
     // logic signed [26:0] cr_incr = 27'sh9999;
     // logic signed [26:0] ci_incr = 27'sh8888;
-    logic signed [26:0] cr_incr = 27'sh999a;
-    logic signed [26:0] ci_incr = 27'sh88a4;
 
+    // I AM RIGHT
+    // logic signed [26:0] cr_incr = 27'sh999a;
+    // logic signed [26:0] ci_incr = 27'sh88a4;
+    logic signed [8:0] counter_639;
     logic c_all_done;
     logic iterblock_rst;
     assign all_done = c_all_done;
@@ -34,6 +42,7 @@ iterations, done, all_done);
             cur_range <= range;
             next_ci <= ci_init;
             next_cr <= cr_init;
+            counter_639 <= 8'd639;
         end 
         else begin 
             state <= next_state;
@@ -48,13 +57,19 @@ iterations, done, all_done);
             if (state == S_INCREMENT) begin 
                 iterblock_rst <= 1;
                 cur_range <= cur_range - 1;
-                if ( (next_cr + cr_incr) > 27'sh800000 ) begin  
+                // if ( (next_cr + cr_incr) > 27'sh800000 ) begin  
+                //     next_ci <= next_ci - ci_incr;
+                //     next_cr <= 27'sh7000000;
+                // end
+                if ( counter_639 == 1 ) begin  
+                    counter_639 <= 8'd639;
                     next_ci <= next_ci - ci_incr;
-                    next_cr <= 27'sh7000000;
+                    next_cr <= cr_reset;
                 end
 
                 else begin 
                     next_cr <= next_cr + cr_incr;
+                    counter_639 <= counter_639 - 1;
                 end 
             end 
         end 

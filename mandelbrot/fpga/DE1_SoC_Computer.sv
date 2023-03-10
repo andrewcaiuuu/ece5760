@@ -622,23 +622,31 @@ reg all_done_flag;
 reg iter_rst;
 reg signed [26:0] zoom_center_ci = 0;
 reg signed [26:0] zoom_center_cr = 0;
-reg [7:0] allowed_zoom_levels = 8'd9;
+reg signed [26:0] cr_incr, ci_incr, cr_stop, cr_reset;
+reg [7:0] allowed_zoom_levels;
 integer ii, jj;
 always@(posedge M10k_pll) begin 
 	LEDR <= 10'd0;
 	iter_rst <= 1'b_0;
 	if (~KEY[0]) begin 
+		iter_rst <= 1'b1;
 		// cur_incr <= 27'sh19999A
 		cur_ci <= '{27'sh0800000, 27'sh0666666, 27'sh04ccccd, 27'sh0333333, 27'sh019999a, 27'sh0000000, 27'sh7e66666, 27'sh7cccccd, 27'sh7b33333, 27'sh799999a}; //double check
         cur_cr <= '{27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000}; //double check
 		vga_reset <= 1'b_1 ;
+		cr_incr <= 27'sh999a;
+		ci_incr <= 27'sh88a4;
+		// cr_stop <= 27'sh800000;
+		cr_reset <= 27'sh7000000;
+		allowed_zoom_levels <= 0;
+
 	end 
 	else begin 
 		// when all of the iterators are done we write the display
 		if ( all_done_flag ) begin
 			//LEDR <= 10'd0;
 			vga_reset <= 1'b_0 ;
-			// KEY 1 is for zoom in
+			// KEY 1 is for zoom out
 			if (~KEY[1] && (allowed_zoom_levels > 0)) begin
 				LEDR <= 10'd01023;
 				vga_reset <= 1'b_1 ;
@@ -650,8 +658,12 @@ always@(posedge M10k_pll) begin
 					cur_ci[ii] <= (cur_ci[ii] << 1) + zoom_center_ci;
 					cur_cr[ii] <= (cur_ci[ii] << 1) + zoom_center_cr;
 				end
+				cr_incr  <= cr_incr<<1;
+				ci_incr  <= ci_incr<<1;
+				// cr_stop  <= cr_stop<<1;
+				cr_reset<= cr_reset<<1;
 			end
-			// KEY 2 is for zoom out
+			// KEY 2 is for zoom in
 			else if (~KEY[2] && (allowed_zoom_levels < 8'd10)) begin 
 				LEDR <= 10'd01023;
 				vga_reset <= 1'b_1 ;
@@ -660,9 +672,13 @@ always@(posedge M10k_pll) begin
 				// cur_incr <= cur_incr << 1;
 				
 				for(jj=0; jj<10; jj=jj+1) begin 
-					cur_ci[jj] <= (cur_ci[jj] >> 1) + zoom_center_ci;
-					cur_cr[jj] <= (cur_ci[jj] >> 1) + zoom_center_cr;
+					cur_ci[jj] <= (cur_ci[jj] >>> 1) + zoom_center_ci;
+					cur_cr[jj] <= (cur_ci[jj] >>> 1) + zoom_center_cr;
 				end
+				cr_incr  <= cr_incr>>>1;
+				ci_incr  <= ci_incr>>>1;
+				// cr_stop  <= cr_stop>>>1;
+				cr_reset<= cr_reset>>>1;
 			end
 		end
 	end 
@@ -908,12 +924,16 @@ generate
 		(
 			// input
 			.clk(M10k_pll),
-			.rst(~KEY[0] | iter_rst),
+			.rst(iter_rst),
 			.ci_init(cur_ci[z]),
 			.cr_init(cur_cr[z]),
 			.max_iterations(max_iterations),
 			.range(32'd30720),
 			.handshake(handshake[z]),
+			.cr_incr(cr_incr),
+			.ci_incr(ci_incr),
+			.cr_stop(cr_stop),
+			.cr_reset(cr_reset),
 			// output
 			.iterations(iterations[z]),
 			.done(done[z]),
