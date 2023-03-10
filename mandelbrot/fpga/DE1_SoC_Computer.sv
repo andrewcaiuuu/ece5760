@@ -492,7 +492,58 @@ reg [7:0] state [0:9];
 reg 		[18:0] write_address [0:9];
 reg 		[18:0] next_write_address [0:9];
 reg [7:0] write_data [0:9];
-reg [9:0] which_memblock;
+reg     [9:0]   which_memblock = 0; //new
+reg [9:0] switch_values [0:9] = '{9'd_0, 9'd_48, 9'd_96, 9'd_144, 9'd_192, 9'd_240, 9'd_288, 9'd_336, 9'd_384, 9'd_432};
+
+// always@(posedge M10k_pll) begin 
+// 	// output which_memblock for one hot decoding later
+// 	if (next_y == switch_values[0]) begin 
+// 		switch_values[0:8] <= switch_values[1:9];
+// 		switch_values[9] <= -9'sd1; // put in negative 1 so it never matches again
+// 		which_memblock <= (which_memblock >> 1 ) | 9'b1;
+// 	end 
+// 	else begin 
+// 		which_memblock <= which_memblock;
+// 		switch_values <= switch_values;
+// 	end 
+
+// end 
+
+always@(*) begin 
+	// default vga driver is outputting next_y, next_x,
+	// i was lazy so just using this for now to calculate true range
+	// then do muxing on this value
+	if (( (19'd_640*next_y) + next_x ) > 19'd_276471) begin 
+		which_memblock = 10'd_9;
+	end 
+	else if (( (19'd_640*next_y) + next_x ) > 19'd_245752) begin 
+		which_memblock = 10'd_8;
+	end 
+	else if (( (19'd_640*next_y) + next_x ) > 19'd_215033) begin 
+		which_memblock = 10'd_7;
+	end 
+	else if (( (19'd_640*next_y) + next_x ) > 19'd_184314) begin 
+		which_memblock = 10'd_6;
+	end 
+	else if (( (19'd_640*next_y) + next_x ) > 19'd_153595) begin 
+		which_memblock = 10'd_5;
+	end 
+	else if (( (19'd_640*next_y) + next_x ) > 19'd_122876) begin 
+		which_memblock = 10'd_4;
+	end 
+	else if (( (19'd_640*next_y) + next_x ) > 19'd_92157) begin 
+		which_memblock = 10'd_3;
+	end 
+	else if (( (19'd_640*next_y) + next_x ) > 19'd_61438) begin 
+		which_memblock = 10'd_2;
+	end 
+	else if (( (19'd_640*next_y) + next_x ) > 19'd_30719) begin 
+		which_memblock = 10'd_1;
+	end 
+	else begin 
+		which_memblock = 0;
+	end
+end
 
 
 
@@ -505,6 +556,12 @@ wire [31:0] iterations[0:9];
 
 reg write_enable[0:9];
  
+// reg[26:0] ci_init[0:9] = '{27'sh0800000, 27'sh0666666, 27'sh04ccccd, 27'sh0333333, 27'sh019999a, 27'sh0000000, 27'sh7e66666, 27'sh7cccccd, 27'sh7b33333, 27'sh799999a}; //double check
+// reg[26:0] cr_init[0:9] = '{27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000}; //double check
+
+reg[26:0] cur_ci[0:9];
+reg[26:0] cur_cr[0:9];
+
 // instantiate state machines for each m10k block
 genvar i;
 generate
@@ -512,12 +569,14 @@ generate
         always@(posedge M10k_pll) begin
             // Zero everything in reset
             if (~KEY[0]) begin
-                arbiter_state[i] <= 10'd_0 ;
-                x_coord[i] <= 10'd_0 ;
-                y_coord[i] <= 10'd_0 ;
-                state[i] <= 8'd0 ;
-                write_address[i] <= 8'd0;
-                next_write_address[i] <= 8'd0;
+                // arbiter_state[i] <= 10'd_0 ;
+                // x_coord[i] <= 10'd_0 ;
+                // y_coord[i] <= 10'd_0 ;
+				// cur_ci <= '{27'sh0800000, 27'sh0666666, 27'sh04ccccd, 27'sh0333333, 27'sh019999a, 27'sh0000000, 27'sh7e66666, 27'sh7cccccd, 27'sh7b33333, 27'sh799999a}; //double check
+                // cur_cr <= '{27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000}; //double check
+				state[i] <= 8'd0 ;
+                write_address[i] <= 0;
+                next_write_address[i] <= 0;
             end
             // Otherwiser repeatedly write a large checkerboard to memory
             else begin
@@ -557,25 +616,65 @@ endgenerate
 
 // MUXING LOGIC OUTSIDE OF VGA STATE MACHINE
 // KINDA SHIT 
-reg all_done_no_flag;
+
+reg all_done_flag;
+// reg signed [26:0] cur_incr;
+reg iter_rst;
+reg signed [26:0] zoom_center_ci = 0;
+reg signed [26:0] zoom_center_cr = 0;
+reg [7:0] allowed_zoom_levels = 8'd9;
+integer ii, jj;
 always@(posedge M10k_pll) begin 
+	LEDR <= 10'd0;
+	iter_rst <= 1'b_0;
 	if (~KEY[0]) begin 
+		// cur_incr <= 27'sh19999A
+		cur_ci <= '{27'sh0800000, 27'sh0666666, 27'sh04ccccd, 27'sh0333333, 27'sh019999a, 27'sh0000000, 27'sh7e66666, 27'sh7cccccd, 27'sh7b33333, 27'sh799999a}; //double check
+        cur_cr <= '{27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000}; //double check
 		vga_reset <= 1'b_1 ;
 	end 
 	else begin 
 		// when all of the iterators are done we write the display
-		integer i;
-		all_done_no_flag = 1'b0;
-		for(i=0; i < 10; i=i+1) begin 
-			if (all_done[i] == 1'b_0) begin
-				all_done_no_flag = 1'b1;	
-			end 
-			if(i==23 && (!all_done_no_flag)) begin 
-				vga_reset <= 1'b_0;
-			end	
+		if ( all_done_flag ) begin
+			//LEDR <= 10'd0;
+			vga_reset <= 1'b_0 ;
+			// KEY 1 is for zoom in
+			if (~KEY[1] && (allowed_zoom_levels > 0)) begin
+				LEDR <= 10'd01023;
+				vga_reset <= 1'b_1 ;
+				iter_rst <= 1'b_1 ;
+				allowed_zoom_levels <= allowed_zoom_levels - 1;
+				// cur_incr <= cur_incr << 1;
+				
+				for(ii=0; ii<10; ii=ii+1) begin 
+					cur_ci[ii] <= (cur_ci[ii] << 1) + zoom_center_ci;
+					cur_cr[ii] <= (cur_ci[ii] << 1) + zoom_center_cr;
+				end
+			end
+			// KEY 2 is for zoom out
+			else if (~KEY[2] && (allowed_zoom_levels < 8'd10)) begin 
+				LEDR <= 10'd01023;
+				vga_reset <= 1'b_1 ;
+				iter_rst <= 1'b_1 ;
+				allowed_zoom_levels <= allowed_zoom_levels + 1;
+				// cur_incr <= cur_incr << 1;
+				
+				for(jj=0; jj<10; jj=jj+1) begin 
+					cur_ci[jj] <= (cur_ci[jj] >> 1) + zoom_center_ci;
+					cur_cr[jj] <= (cur_ci[jj] >> 1) + zoom_center_cr;
+				end
+			end
 		end
 	end 
 end 
+integer x;
+always_comb begin
+	all_done_flag = 1'b1;
+	for(x=0; x < 10; x=x+1)  begin 
+		all_done_flag = all_done_flag & all_done[x];
+	end
+end
+
 
 // always@(*) begin 
 // 	// default vga driver is outputting next_y, next_x,
@@ -589,58 +688,129 @@ end
 // 	end
 // end
 
-
-
-
 always@(*) begin
 	// does parallel muxing using casez statement
-	casez ( which_memblock )
-	9'b_?_????_???1: begin
-	M10k_out <= M10k_outs[0];
-	read_address <= (19'd_640*next_y) + next_x;
+	case ( which_memblock )
+	10'd0: begin
+		//LEDR = 10'd10;
+		M10k_out = M10k_outs[0];
+		read_address = (19'd_640*next_y) + next_x;
 	end
-	9'b_?_????_??1?: begin
-	M10k_out <= M10k_outs[1];
-	read_address <= (19'd_640*next_y) + next_x - 19'd153600;
+	10'd1: begin
+		//LEDR = 10'd2;
+		M10k_out = M10k_outs[1];
+		read_address = (19'd_640*next_y) + next_x - 19'd30720;
 	end
-	9'b_?_????_?1??: begin
-	M10k_out <= M10k_outs[2];
-	read_address <= (19'd_640*next_y) + next_x - 19'd307200;
+	10'd2: begin
+		//LEDR = 10'd3;
+		M10k_out = M10k_outs[2];
+		read_address = (19'd_640*next_y) + next_x - 19'd61440;
 	end
-	9'b_?_????_?1??: begin
-	M10k_out <= M10k_outs[3];
-	read_address <= (19'd_640*next_y) + next_x - 19'd460800;
+	10'd3: begin
+		//LEDR = 10'd4;
+		M10k_out = M10k_outs[3];
+		read_address = (19'd_640*next_y) + next_x - 19'd92160;
 	end
-	9'b_?_????_1???: begin
-	M10k_out = M10k_outs[4];
-	read_address = (19'd_640*next_y) + next_x - 19'd614400;
+	10'd4: begin
+		//LEDR = 10'd5;
+		M10k_out = M10k_outs[4];
+		read_address = (19'd_640*next_y) + next_x - 19'd122880;
 	end
-	9'b_?_???1_????: begin
-	M10k_out = M10k_outs[5];
-	read_address = (19'd_640*next_y) + next_x - 19'd768000;
+	10'd5: begin
+		//LEDR = 10'd6;
+		M10k_out = M10k_outs[5];
+		read_address = (19'd_640*next_y) + next_x - 19'd153600;
 	end
-	9'b_?_??1?_????: begin
-	M10k_out = M10k_outs[6];
-	read_address = (19'd_640*next_y) + next_x - 19'd921600;
+	10'd6: begin
+		//LEDR = 10'd7;
+		M10k_out = M10k_outs[6];
+		read_address = (19'd_640*next_y) + next_x - 19'd184320;
 	end
-	9'b_?_?1??_????: begin
-	M10k_out = M10k_outs[7];
-	read_address = (19'd_640*next_y) + next_x - 19'd1075200;
+	10'd7: begin
+		//LEDR = 10'd8;
+		M10k_out = M10k_outs[7];
+		read_address = (19'd_640*next_y) + next_x - 19'd215040;
 	end
-	9'b_?_1???_????: begin
-	M10k_out = M10k_outs[8];
-	read_address = (19'd_640*next_y) + next_x - 19'd1228800;
+	10'd8: begin
+		//LEDR = 10'd8;
+		M10k_out = M10k_outs[8];
+		read_address = (19'd_640*next_y) + next_x - 19'd245760;
 	end
-	9'b_1_????_????: begin
-	M10k_out = M10k_outs[9];
-	read_address = (19'd_640*next_y) + next_x - 19'd1382400;
+	10'd9: begin
+		//LEDR = 10'd10;
+		M10k_out = M10k_outs[9];
+		read_address = (19'd_640*next_y) + next_x - 19'd276480;
 	end
 	default: begin
-	M10k_out = M10k_outs[0];
-	read_address = (19'd_640*next_y) + next_x;
+		//LEDR = 10'd0;
+		M10k_out = M10k_outs[0];
+		read_address = (19'd_640*next_y) + next_x;
 	end
 	endcase
 end
+
+
+// always@(*) begin
+// 	// does parallel muxing using casez statement
+// 	casez ( which_memblock )
+// 	9'b_?_????_???1: begin
+// 		LEDR = 10'd1;
+// 		M10k_out = M10k_outs[0];
+// 		read_address = (19'd_640*next_y) + next_x;
+// 	end
+// 	9'b_?_????_??1?: begin
+// 		LEDR = 10'd2;
+// 		M10k_out = M10k_outs[1];
+// 		read_address = (19'd_640*next_y) + next_x - 19'd30720;
+
+// 	end
+// 	9'b_?_????_?1??: begin
+// 		LEDR = 10'd3;
+// 		M10k_out = M10k_outs[2];
+// 		read_address = (19'd_640*next_y) + next_x - 19'd61440;
+// 	end
+// 	9'b_?_????_?1??: begin
+// 		LEDR = 10'd4;
+// 		M10k_out = M10k_outs[3];
+// 		read_address = (19'd_640*next_y) + next_x - 19'd92160;
+// 	end
+// 	9'b_?_????_1???: begin
+// 		LEDR = 10'd5;
+// 		M10k_out = M10k_outs[4];
+// 		read_address = (19'd_640*next_y) + next_x - 19'd122880;
+// 	end
+// 	9'b_?_???1_????: begin
+// 		LEDR = 10'd6;
+// 		M10k_out = M10k_outs[5];
+// 		read_address = (19'd_640*next_y) + next_x - 19'd153600;
+// 	end
+// 	9'b_?_??1?_????: begin
+// 		LEDR = 10'd7;
+// 		M10k_out = M10k_outs[6];
+// 		read_address = (19'd_640*next_y) + next_x - 19'd184320;
+// 	end
+// 	9'b_?_?1??_????: begin
+// 		LEDR = 10'd8;
+// 		M10k_out = M10k_outs[7];
+// 		read_address = (19'd_640*next_y) + next_x - 19'd215040;
+// 	end
+// 	9'b_?_1???_????: begin
+// 		LEDR = 10'd8;
+// 		M10k_out = M10k_outs[8];
+// 		read_address = (19'd_640*next_y) + next_x - 19'd245760;
+// 	end
+// 	9'b_1_????_????: begin
+// 		LEDR = 10'd10;
+// 		M10k_out = M10k_outs[9];
+// 		read_address = (19'd_640*next_y) + next_x - 19'd276480;
+// 	end
+// 	default: begin
+// 		LEDR = 10'd0;
+// 		M10k_out = M10k_outs[0];
+// 		read_address = (19'd_640*next_y) + next_x;
+// 	end
+// 	endcase
+// end
 
 
 // Instantiate memory
@@ -657,13 +827,11 @@ generate
     );
   end
 endgenerate
-wire [9:0] switch_values [0:9] = '{9'd_0, 9'd_48, 9'd_96, 9'd_144, 9'd_192, 9'd_240, 9'd_288, 9'd_336, 9'd_384, 9'd_432};
 // wire [9:0] which_memblock;
 // Instantiate VGA driver					
 vga_driver DUT   (	.clock(vga_pll), 
 							.reset(vga_reset),
 							.color_in(M10k_out),	// Pixel color (8-bit) from memory
-							.switch_values(switch_values),
 							.next_x(next_x),		// This (and next_y) used to specify memory read address
 							.next_y(next_y),		// This (and next_x) used to specify memory read address
 							.hsync(VGA_HS),
@@ -673,8 +841,7 @@ vga_driver DUT   (	.clock(vga_pll),
 							.blue(VGA_B),
 							.sync(VGA_SYNC_N),
 							.clk(VGA_CLK),
-							.blank(VGA_BLANK_N),
-							.which_memblock(which_memblock)
+							.blank(VGA_BLANK_N)
 );
 
 function [7:0] color_reg(input [31:0] iterations);
@@ -712,11 +879,27 @@ function [7:0] color_reg(input [31:0] iterations);
 	end
 endfunction
 
+// function [26:0] calculate_ci_zoom_in[0:9](input [26:0] center);
+// 	begin
+// 		integer calc_ci;
+// 		for(calc_ci=0; calc_ci<10;calc_ci=calc_ci+1) begin 
+// 			calculate_ci_zoom_in[i] = cur_ci[0] << 1;
+// 		end
+// 	end
+// endfunction
+
+// function [26:0] calculate_cr_zoom_in[0:9](input [26:0] center);
+// 	begin
+// 		integer calc_cr;
+// 		for(calc_cr=0; calc_cr<10;calc_cr=calc_cr+1) begin 
+// 			calculate_cr_zoom_in[i] = cur_cr[0] << 1;
+// 		end
+// 	end
+// endfunction
 
 
-reg[26:0] ci_init[0:9] = '{27'sh0800000, 27'sh0666666, 27'sh04ccccd, 27'sh0333333, 27'sh019999a, 27'sh0000000, 27'sh7e66666, 27'sh7cccccd, 27'sh7b33333, 27'sh799999a}; //double check
-reg[26:0] cr_init[0:9] = '{27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000}; //double check
 
+//reg[26:0] ci_init[0:9] = '{27'sh0800000, 27'sh0666666, 27'sh04CCCCC, 27'sh0333333, 27'sh0199999, 27'sh0000000, 27'sh7E66667, 27'sh7CCCCCD, 27'sh7B33334, 27'sh799999A}; //double check
 
 genvar z;
 generate 
@@ -725,9 +908,9 @@ generate
 		(
 			// input
 			.clk(M10k_pll),
-			.rst(~KEY[0]),
-			.ci_init(ci_init[z]),
-			.cr_init(cr_init[z]),
+			.rst(~KEY[0] | iter_rst),
+			.ci_init(cur_ci[z]),
+			.cr_init(cur_cr[z]),
 			.max_iterations(max_iterations),
 			.range(32'd30720),
 			.handshake(handshake[z]),
@@ -904,14 +1087,14 @@ Computer_System The_System (
 );
 endmodule // end top level
 
-// please feed me increments divisible by 640 ty
+
 
 // Declaration of module, include width and signedness of each input/output
 module vga_driver (
 	input wire clock,
 	input wire reset,
 	input [7:0] color_in,
-	input [9:0] switch_values [0:9], //staring y value for each memblock
+	// input [9:0] switch_values [0:9], //staring y value for each memblock
 	output [9:0] next_x,
 	output [9:0] next_y,
 	output wire hsync,
@@ -921,8 +1104,8 @@ module vga_driver (
 	output [7:0] blue,
 	output sync,
 	output clk,
-	output blank,
-	output [9:0] which_memblock //new 
+	output blank
+	// output [9:0] which_memblock //new 
 	
 );
 	
@@ -981,8 +1164,8 @@ module vga_driver (
 	reg 	[7:0]	h_state ;
 	reg 	[7:0]	v_state ;
 
-	reg     [9:0]   which_memblock_reg; //new
-	reg     [9:0]   switch_values_reg[0:9]; //new
+	// reg     [9:0]   which_memblock_reg; //new
+	// reg     [9:0]   switch_values_reg[0:9]; //new
 
 	// State machine
 	always@(posedge clock) begin
@@ -998,6 +1181,7 @@ module vga_driver (
 			line_done 	<= LOW ;
   		end
   		else begin
+			
 			//////////////////////////////////////////////////////////////////////////
 			///////////////////////// HORIZONTAL /////////////////////////////////////
 			//////////////////////////////////////////////////////////////////////////
@@ -1083,17 +1267,6 @@ module vga_driver (
 			
  	 	end
 	end
-	always@(*) begin 
-		if ( reset ) begin 
-			switch_values_reg = switch_values;
-		end 
-		// output which_memblock for one hot decoding later
-		else if (next_y == switch_values_reg[0]) begin 
-			switch_values_reg[0:8] = switch_values_reg[1:9];
-			switch_values_reg[9] = -9'sd1; // put in negative 1 so it never matches again
-			which_memblock_reg = (which_memblock >> 1 ) | 9'b1;
-		end 
-	end 
 
 	// Assign output values
 	assign hsync = hysnc_reg ;
@@ -1107,6 +1280,7 @@ module vga_driver (
 	// The x/y coordinates that should be available on the NEXT cycle
 	assign next_x = (h_state==H_ACTIVE_STATE)?h_counter:10'd_0 ;
 	assign next_y = (v_state==V_ACTIVE_STATE)?v_counter:10'd_0 ;
+	//assign which_memblock = which_memblock_reg;
 
 endmodule
 
