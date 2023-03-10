@@ -378,25 +378,35 @@ wire vga_pll ;
 reg  vga_reset ;
 
 // M10k memory control and data
-wire 		[7:0] 	M10k_out1, M10k_out2 ;
+wire 		[7:0] 	M10k_outs[0:9];
 reg 		[7:0] 	M10k_out;
+
+/*
 reg 		[7:0] 	write_data, write_data1, write_data2 ;
 reg 		[18:0] 	write_address, write_address1, next_write_address1, write_address2, next_write_address2 ;
 reg 		[18:0] 	read_address ;
 reg 					write_enable, write_enable1, write_enable2 ;
+*/
+
+reg 		[18:0] 	read_address ;
+
 
 // M10k memory clock
 wire 					M10k_pll ;
 wire 					M10k_pll_locked ;
 
 // Memory writing control registers
-reg 		[7:0] 	arbiter_state ;
-reg 		[9:0] 	x_coord ;
-reg 		[9:0] 	y_coord ;
+//reg 		[7:0] 	arbiter_state ;
+//reg 		[9:0] 	x_coord ;
+//reg 		[9:0] 	y_coord ;
 
 // Wires for connecting VGA driver to memory
 wire 		[9:0]		next_x ;
 wire 		[9:0] 	next_y ;
+
+
+
+/*
 
 reg state1, state2;
 always@(posedge M10k_pll) begin
@@ -474,18 +484,96 @@ always@(posedge M10k_pll) begin
 
 end 
 
+*/
+reg [9:0] arbiter_state [0:9];
+reg [9:0] x_coord [0:9];
+reg [9:0] y_coord [0:9];
+reg [7:0] state [0:9];
+reg 		[18:0] write_address [0:9];
+reg 		[18:0] next_write_address [0:9];
+reg [7:0] write_data [0:9];
+reg [5:0] which_memblock;
+
+
+
+// Instantiate Iterator
+wire [31:0] max_iterations = 32'd100;
+wire done[0:9];
+wire all_done[0:9];
+reg handshake[0:9];
+wire [31:0] iterations[0:9];
+
+reg write_enable[0:9];
+ 
+// instantiate state machines for each m10k block
+genvar i;
+generate
+    for (i = 0; i < 10; i= i+1) begin : block_gen
+        always@(posedge M10k_pll) begin
+            // Zero everything in reset
+            if (~KEY[0]) begin
+                arbiter_state[i] <= 10'd_0 ;
+                x_coord[i] <= 10'd_0 ;
+                y_coord[i] <= 10'd_0 ;
+                state[i] <= 8'd0 ;
+                write_address[i] <= 8'd0;
+                next_write_address[i] <= 8'd0;
+            end
+            // Otherwiser repeatedly write a large checkerboard to memory
+            else begin
+                if (all_done[i]) begin 
+                    write_enable[i] <= 1'b0;
+                end
+                else begin 
+                    if (state[i] == 8'd0) begin 
+                        state[i] <= 8'd1;
+                        if (done[i]) begin 
+                            write_enable[i] <= 1'b1;
+                            // compute address
+                            handshake[i] <= 1'b1;
+                            write_address[i] <= next_write_address[i]; 
+                            next_write_address[i] <= write_address[i] + 1;
+                            // data
+                            write_data[i] <= color_reg(iterations[i]);
+                        end 
+                    end 
+                    if (state[i] == 8'd1) begin 
+                        handshake[i] <= 1'b0;
+                        write_enable[i] <= 1'b0;
+                        state[i]  <= 8'd0 ;
+                    end
+                end 
+            end
+        end
+	end
+endgenerate
+
+
+
+
+
+
+
 
 // MUXING LOGIC OUTSIDE OF VGA STATE MACHINE
 // KINDA SHIT 
-reg which_memblock;
-
+reg all_done_no_flag;
 always@(posedge M10k_pll) begin 
 	if (~KEY[0]) begin 
 		vga_reset <= 1'b_1 ;
 	end 
-	else if ( all_done2 & all_done1 ) begin 
+	else begin 
 		// when all of the iterators are done we write the display
-		vga_reset <= 1'b_0;
+		integer i;
+		all_done_no_flag = 1'b0;
+		for(i=0; i < 10; i=i+1) begin 
+			if (all_done[i] == 1'b_0) begin
+				all_done_no_flag = 1'b1;	
+			end 
+			if(i==23 && (!all_done_no_flag)) begin 
+				vga_reset <= 1'b_0;
+			end	
+		end
 	end 
 end 
 
@@ -501,41 +589,74 @@ always@(*) begin
 	end
 end
 
-always@(*) begin 
-	// does parallel muxing using case statement
-	case ( which_memblock )
-		0: begin 
-			M10k_out = M10k_out1;
-			read_address = (19'd_640*next_y) + next_x;
-		end
-		1: begin 
-			M10k_out = M10k_out2;
-			// subtracting the size of the first memory block
-			read_address = (19'd_640*next_y) + next_x - 19'd153600;
-		end
-		default: begin 
-			M10k_out = M10k_out1;
-			read_address = (19'd_640*next_y) + next_x;
-		end 
-	endcase
-end 
+
+
+
+always@(*) begin
+// does parallel muxing using case statement
+case ( which_memblock )
+0: begin
+M10k_out <= M10k_outs[0];
+read_address <= (19'd_640*next_y) + next_x;
+end
+1: begin
+M10k_out <= M10k_outs[1];
+read_address <= (19'd_640*next_y) + next_x - 19'd153600;
+end
+2: begin
+M10k_out <= M10k_outs[2];
+read_address <= (19'd_640*next_y) + next_x - 19'd307200;
+end
+3: begin
+M10k_out <= M10k_outs[3];
+read_address <= (19'd_640*next_y) + next_x - 19'd460800;
+end
+4: begin
+M10k_out = M10k_outs[4];
+read_address = (19'd_640*next_y) + next_x - 19'd614400;
+end
+5: begin
+M10k_out = M10k_outs[5];
+read_address = (19'd_640*next_y) + next_x - 19'd768000;
+end
+6: begin
+M10k_out = M10k_outs[6];
+read_address = (19'd_640*next_y) + next_x - 19'd921600;
+end
+7: begin
+M10k_out = M10k_outs[7];
+read_address = (19'd_640*next_y) + next_x - 19'd1075200;
+end
+8: begin
+M10k_out = M10k_outs[8];
+read_address = (19'd_640*next_y) + next_x - 19'd1228800;
+end
+9: begin
+M10k_out = M10k_outs[9];
+read_address = (19'd_640*next_y) + next_x - 19'd1382400;
+end
+default: begin
+M10k_out = M10k_outs[0];
+read_address = (19'd_640*next_y) + next_x;
+end
+endcase
+end
+
 
 // Instantiate memory
-M10K_1000_8 pixel_data1( .q(M10k_out1), // contains pixel color (8 bit) for display
-								.d(write_data1),
-								.write_address(write_address1),
-								.read_address(read_address),
-								.we(write_enable1),
-								.clk(M10k_pll)
-);
-
-M10K_1000_8 pixel_data2( .q(M10k_out2), // contains pixel color (8 bit) for display
-								.d(write_data2),
-								.write_address(write_address2),
-								.read_address(read_address),
-								.we(write_enable2),
-								.clk(M10k_pll)
-);
+genvar j;
+generate
+  for (j = 0; j < 10; j=j+1) begin : M10K_instance
+    M10K_1000_8 pixel_data (
+      .q({M10k_outs[j]}),
+      .d({write_data[j]}),
+      .write_address({write_address[j]}),
+      .read_address(read_address),
+      .we({write_enable[j]}),
+      .clk(M10k_pll)
+    );
+  end
+endgenerate
 
 // Instantiate VGA driver					
 vga_driver DUT   (	.clock(vga_pll), 
@@ -588,11 +709,36 @@ function [7:0] color_reg(input [31:0] iterations);
 	end
 endfunction
 
-// Instantiate Iterator
-wire [31:0] max_iterations = 32'd100;
-wire done1, all_done1;
-reg handshake1;
-wire [31:0] iterations1;
+
+
+reg[26:0] ci_init[0:9] = '{27'sh0800000, 27'sh0666666, 27'sh04ccccd, 27'sh0333333, 27'sh019999a, 27'sh0000000, 27'sh7e66666, 27'sh7cccccd, 27'sh7b33333, 27'sh799999a}; //double check
+reg[26:0] cr_init[0:9] = '{27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000}; //double check
+
+
+genvar z;
+generate 
+	for (z = 0; z < 10; z=z+1) begin : iterator_instance
+		iterator iter 
+		(
+			// input
+			.clk(M10k_pll),
+			.rst(~KEY[0]),
+			.ci_init(ci_init[z]),
+			.cr_init(cr_init[z]),
+			.max_iterations(max_iterations),
+			.range(32'd30720),
+			.handshake(handshake[z]),
+			// output
+			.iterations(iterations[z]),
+			.done(done[z]),
+			.all_done(all_done[z])
+		);
+	end
+endgenerate
+
+
+
+/*
 iterator iter1 
 (
 	// input
@@ -605,8 +751,8 @@ iterator iter1
 	.handshake(handshake1),
 	// output
 	.iterations(iterations1),
-	.done(done1),
-	.all_done(all_done1)
+	.done(done),
+	.all_done(all_done)
 );
 
 // Instantiate Iterator
@@ -628,7 +774,7 @@ iterator iter2
 	.done(done2),
 	.all_done(all_done2)
 );
-
+*/
 
 //=======================================================
 //  Structural coding
