@@ -405,6 +405,12 @@ wire 		[9:0]		next_x ;
 wire 		[9:0] 	next_y ;
 
 
+wire[3:0] zoom;
+
+wire[26:0] init_ci_global;
+wire[26:0] init_cr_global;
+
+
 
 /*
 
@@ -623,7 +629,6 @@ reg iter_rst;
 reg signed [26:0] zoom_center_ci = 0;
 reg signed [26:0] zoom_center_cr = 0;
 reg signed [26:0] cr_incr, ci_incr, cr_stop, cr_reset;
-reg [7:0] allowed_zoom_levels;
 integer ii, jj;
 reg[26:0] numSteps[0:9] = '{27'sh0, 27'sh7800, 27'shf000, 27'sh16800, 27'sh1e000, 27'sh25800, 27'sh2d000, 27'sh34800, 27'sh3c000, 27'sh43800};
 
@@ -634,14 +639,29 @@ always@(posedge M10k_pll) begin
 	if (~KEY[0]) begin 
 		iter_rst <= 1'b1;
 		// cur_incr <= 27'sh19999A
-		cur_ci <= '{27'sh0800000, 27'sh0666666, 27'sh04ccccd, 27'sh0333333, 27'sh019999a, 27'sh0000000, 27'sh7e66666, 27'sh7cccccd, 27'sh7b33333, 27'sh799999a}; //double check
-        cur_cr <= '{27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000}; //double check
+		cur_ci[0] = init_ci_global;
+		cur_cr[0] = init_cr_global;
+		// cur_ci[0] <= 27'sh0800000;
+		// cur_cr[0] <= 27'sh7000000;
+		for(jj=1; jj<10; jj=jj+1) begin 
+			cur_ci[jj] <= init_ci_global - ((27'sh88a4>>zoom) * jj * 10'd48);
+			// for(ii=0;ii<48;ii=ii+1) begin
+			// 	cur_ci[jj] <= cur_ci[jj] + 27'sh88a4>>1;
+			// end
+			cur_cr[jj] <= cur_cr[0];
+		end
+		
+		
+		// cur_ci <= '{27'sh0800000, 27'sh0666666, 27'sh04ccccd, 27'sh0333333, 27'sh019999a, 27'sh0000000, 27'sh7e66666, 27'sh7cccccd, 27'sh7b33333, 27'sh799999a}; //double check
+        // cur_cr <= '{27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000}; //double check
 		vga_reset <= 1'b_1 ;
-		cr_incr <= 27'sh999a;
-		ci_incr <= 27'sh88a4;
+		// cr_incr <= 27'sh999a>>1;
+		// ci_incr <= 27'sh88a4>>1;
+		cr_incr <= 27'sh999a >> zoom;
+		ci_incr <= 27'sh88a4 >> zoom;
 		// cr_stop <= 27'sh800000;
-		cr_reset <= 27'sh7000000;
-		allowed_zoom_levels <= 0;
+		cr_reset <= init_cr_global;
+		// cr_reset <=  27'sh7000000;
 
 	end 
 	else begin 
@@ -650,82 +670,49 @@ always@(posedge M10k_pll) begin
 			//LEDR <= 10'd0;
 			vga_reset <= 1'b_0 ;
 			// KEY 1 is for zoom out
-			if (~KEY[1] && (allowed_zoom_levels > 0)) begin
-				LEDR <= 10'd01023;
-				vga_reset <= 1'b_1 ;
-				iter_rst <= 1'b_1 ;
-				allowed_zoom_levels <= allowed_zoom_levels - 1;
-				// cur_incr <= cur_incr << 1;
 				
-				for(ii=1; ii<10; ii=ii+1) begin 
-					cur_ci[ii] <= update_ci(jj*27'd30720,cur_ci[0], ci_incr<<<1);
-					cur_cr[ii] <= update_cr(jj*27'd30720,cur_cr[0], cr_incr<<<1);
-				end
-				cr_incr  <= cr_incr<<<1;
-				ci_incr  <= ci_incr<<<1;
-				// cr_stop  <= cr_stop<<1;
-				// cr_reset<= cr_reset<<1;
-			end
-			// KEY 2 is for zoom in
-			else if (~KEY[2] && (allowed_zoom_levels < 8'd10)) begin 
-				LEDR <= 10'd01023;
-				vga_reset <= 1'b_1 ;
-				iter_rst <= 1'b_1 ;
-				allowed_zoom_levels <= allowed_zoom_levels + 1;
-				// cur_incr <= cur_incr << 1;
-				
-				for(jj=1; jj<10; jj=jj+1) begin 
-					cur_ci[jj] <= update_ci(jj*27'd30720,cur_ci[0], ci_incr>>1);
-					cur_cr[jj] <= update_cr(jj*27'd30720,cur_cr[0], cr_incr>>1);
-				end
-
-				cr_incr  <= cr_incr>>1; //divide cr by 2
-				ci_incr  <= ci_incr>>1; //divide ci by 2
-				// cr_stop  <= cr_stop>>>1;
-				// cr_reset <= zoom_center_cr;
-			end
 		end
 	end 
 end 
 
 
-function reg [26:0] update_ci(
-    input reg [26:0] numSteps,
-    input reg [26:0] init_ci,
-    input reg [26:0] ci_incr
-);
-	begin
-		reg [8:0] div = divSixForty(numSteps);
-		reg [26:0] new_ci = init_ci - (ci_incr * div);
-		return new_ci;
-	end
-endfunction
+// function reg [26:0] update_ci(
+//     input reg [26:0] numSteps,
+//     input reg [26:0] init_ci,
+//     input reg [26:0] ci_incr
+// );
+// 	begin
+// 		reg [8:0] div = divSixForty(numSteps);
+// 		reg [26:0] new_ci = init_ci - (ci_incr * div);
+// 		return new_ci;
+// 	end
+// endfunction
 
-function reg[26:0] divSixForty(input reg[26:0] val);
-	begin
-		reg[26:0] remainder = val;
-		reg[8:0] res = 9'b0;
-		reg [9:0] count = 0; //verilog terminbate
-		while((count < 10'd50) && (remainder >= 27'd640)) begin
-			remainder = remainder - 27'd640;
-			res = res+1;
-			count = count + 1;
-		end 
-		return res;
-	end
-endfunction
+// function reg[26:0] divSixForty(input reg[26:0] val);
+// 	begin
+// 		reg[26:0] remainder = val;
+// 		reg[8:0] res = 9'b0;
+// 		reg [9:0] count = 0; //verilog terminbate
+// 		while((count < 10'd50) && (remainder >= 27'd640)) begin
+// 			remainder = remainder - 27'd640;
+// 			res = res+1;
+// 			count = count + 1;
+// 		end 
+// 		return res;
+// 	end
+// endfunction
 
 
-function reg [26:0] update_cr(
-    input reg [26:0] numSteps,
-    input reg [26:0] init_cr,
-    input reg [26:0] cr_incr
-);
-	begin 
-		 reg [26:0] new_cr=init_cr + (cr_incr * (numSteps % 640));
-		 return new_cr;
-	end
-endfunction
+// function reg [26:0] update_cr(
+//     input reg [26:0] numSteps,
+//     input reg [26:0] init_cr,
+//     input reg [26:0] cr_incr
+// );
+// 	begin 
+// 		 reg [26:0] new_cr=init_cr + (cr_incr * (numSteps % 640));
+// 		 return new_cr;
+// 	end
+// endfunction
 
 
 
@@ -1046,6 +1033,12 @@ Computer_System The_System (
 	.m10k_pll_locked_export			(M10k_pll_locked),          //      m10k_pll_locked.export
 	.m10k_pll_outclk0_clk			(M10k_pll),            //     m10k_pll_outclk0.clk
 
+	//HPS init conditions
+	.pio_init_ci_external_connection_export(init_ci_global),
+	.pio_init_cr_external_connection_export(init_cr_global),
+	.pio_init_zoom_external_connection_export(zoom),
+	
+	
 	// Global signals
 	.system_pll_ref_clk_clk					(CLOCK_50),
 	.system_pll_ref_reset_reset			(1'b0),
