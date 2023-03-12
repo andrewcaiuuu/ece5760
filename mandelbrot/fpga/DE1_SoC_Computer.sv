@@ -632,6 +632,7 @@ reg signed [26:0] cr_incr, ci_incr, cr_stop, cr_reset;
 integer ii, jj;
 reg[26:0] numSteps[0:9] = '{27'sh0, 27'sh7800, 27'shf000, 27'sh16800, 27'sh1e000, 27'sh25800, 27'sh2d000, 27'sh34800, 27'sh3c000, 27'sh43800};
 
+wire[31:0] counter_output; 
 
 always@(posedge M10k_pll) begin 
 	LEDR <= 10'd0;
@@ -643,6 +644,8 @@ always@(posedge M10k_pll) begin
 		cur_cr[0] = init_cr_global;
 		// cur_ci[0] <= 27'sh0800000;
 		// cur_cr[0] <= 27'sh7000000;
+		counter_output = 32'b0;
+		
 		for(jj=1; jj<10; jj=jj+1) begin 
 			cur_ci[jj] <= init_ci_global - ((27'sh88a4>>zoom) * jj * 10'd48);
 			// for(ii=0;ii<48;ii=ii+1) begin
@@ -666,7 +669,10 @@ always@(posedge M10k_pll) begin
 	end 
 	else begin 
 		// when all of the iterators are done we write the display
-		if ( all_done_flag ) begin
+		if(!(all_done_flag)) begin
+			counter_output = counter_output+1;
+		end 
+		if (all_done_flag) begin
 			//LEDR <= 10'd0;
 			vga_reset <= 1'b_0 ;
 			// KEY 1 is for zoom out
@@ -1037,7 +1043,7 @@ Computer_System The_System (
 	.pio_init_ci_external_connection_export(init_ci_global),
 	.pio_init_cr_external_connection_export(init_cr_global),
 	.pio_init_zoom_external_connection_export(zoom),
-	
+	.pio_counter_external_export(counter_output),
 	
 	// Global signals
 	.system_pll_ref_clk_clk					(CLOCK_50),
