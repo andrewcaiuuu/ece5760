@@ -129,21 +129,35 @@ int main(void)
     int range = 307200/numSolvers;
     int max_depth = 100;
 
+
+
     //*(fpga_range_ptr) = range;
     *(fpga_max_iterations_ptr) = max_depth;
     // /*(fpga_num_solvers) = numSolvers;
     //*(fpga_num_ci_incr_ptr) = numIncrCI;
 
+    float incrI = 0.25;
+    float incrR = 0.5;
+
 
 	while(1){
-		printf("enter z for zoom, i for ci, r for cr, s for time, n to set numIters, d to change \n");
+
+		printf("enter z for zoom, i for ci, r for cr, t for time, n to set numIters, l to change depth, WASD arrow to move around\n");
 		scanf("%c", &input);
 		if (input == 'z'){
+            int prevZoom = zoom;
             printf("enter zoom \n");
 			scanf("%d", &zoom);
 			// fixed_zoom = zooms;
 			*(fpga_zoom_ptr) = zoom;
-		
+            if(prevZoom < zoom){
+                incrI = incrI/(zoom-prevZoom);
+                incrR = incrI/(zoom-prevZoom);
+            }
+            else{
+                incrI = incrI*(prevZoom-zoom);
+                incrR = incrI*(prevZoom-zoom);
+            }
 		}
 		else if (input == 'i'){
             printf("enter ci \n");
@@ -157,7 +171,7 @@ int main(void)
             fixed_cr = (int)cr * DIVISION_CONST;    
             *(fpga_init_cr_ptr) = fixed_cr;		
         }
-        else if (input == 's'){
+        else if (input == 't'){
             int raw_cycles = (*(fpga_counter_ptr));
             printf("cycle count: %d \n", raw_cycles);
             float cycle_time = (float)raw_cycles/50000000;
@@ -178,12 +192,60 @@ int main(void)
 
         }
 
-         else if (input == 'd'){
+         else if (input == 'l'){
             printf("input desired max solver depth \n");
             scanf("%d", &max_depth);
             *(fpga_max_iterations_ptr) = max_depth;
 
         }
+
+        else if (input == 'w'){
+            printf("Ci is %1.6f \n", ci);
+           	//if(ci+incrI <=1.0){
+                   ci = ci + incrI;
+             //  }
+            printf("New Ci is %1.6f \n", ci);
+
+            fixed_ci = (int)ci * DIVISION_CONST;    
+            *(fpga_init_ci_ptr) = fixed_ci;		
+        }
+
+        else if (input == 's'){
+            printf("Ci is %1.6f \n", ci);
+
+           // if(ci-incrI >= -1){
+                   ci = ci - (float)incrI;
+             //  }
+            printf("New Ci is %1.6f \n", ci);
+
+            fixed_ci = (int)ci * DIVISION_CONST;    
+            *(fpga_init_ci_ptr) = fixed_ci;		
+        }
+
+        else if (input == 'a'){
+            printf("Cr is %1.6f \n", cr);
+
+ //          	if(cr-incrR >= -2){
+               cr = cr - incrR;
+   //         }
+            printf("new Cr is %1.6f \n", cr);
+
+            fixed_cr = (int)cr * DIVISION_CONST;    
+            *(fpga_init_cr_ptr) = fixed_cr;		
+        }
+        else if (input == 'd'){
+           // printf("Cr is %1.6f \n", cr);
+
+           	//if(cr+incrR <=2){
+               cr = cr + incrR;
+            //}
+            printf("New Cr is %1.6f \n", cr);
+
+            fixed_cr = (int)cr * DIVISION_CONST;    
+            *(fpga_init_cr_ptr) = fixed_cr;		
+        }
+
+
 
 	}
 	return 0;
