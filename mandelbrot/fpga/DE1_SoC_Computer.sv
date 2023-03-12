@@ -378,7 +378,7 @@ wire vga_pll ;
 reg  vga_reset ;
 
 // M10k memory control and data
-wire 		[7:0] 	M10k_outs[0:9];
+wire 		[7:0] 	M10k_outs[0:20];
 reg 		[7:0] 	M10k_out;
 
 /*
@@ -409,97 +409,19 @@ wire[3:0] zoom;
 
 wire[26:0] init_ci_global;
 wire[26:0] init_cr_global;
+reg[4:0] numSolvers;
 
 
 
-/*
-
-reg state1, state2;
-always@(posedge M10k_pll) begin
-	// Zero everything in reset
-	if (~KEY[0]) begin
-		arbiter_state <= 8'd_0 ;
-		// vga_reset <= 1'b_1 ;
-		x_coord <= 10'd_0 ;
-		y_coord <= 10'd_0 ;
-		state1 <= 8'd0 ;
-		write_address1 <= 8'd0;
-		next_write_address1 <= 8'd0;
-	end
-	// Otherwiser repeatedly write a large checkerboard to memory
-	else begin
-		if ( all_done1 ) begin 
-			// vga_reset <= 1'b_0;
-			write_enable1 <= 1'b0;
-		end
-		else begin 
-			if (state1 == 8'd0) begin 
-				state1 <= 8'd1;
-				if ( done1 ) begin 
-					write_enable1 <= 1'b1;
-					// compute address
-					handshake1 <= 1'b1;
-					write_address1 <= next_write_address1; 
-					next_write_address1 <= write_address1 + 1;
-					// data
-					write_data1 <= color_reg(iterations1);
-				end 
-			end 
-			if (state1 == 8'd1) begin 
-				handshake1 <= 1'b0;
-				write_enable1 <= 1'b0;
-				state1  <= 8'd0 ;
-			end
-		end 
-	end
-end
-// for second iterator
-always@(posedge M10k_pll) begin 
-	// Zero everything in reset
-	if (~KEY[0]) begin
-		state2 <= 8'd0 ;
-		write_address2 <= 8'd0;
-		next_write_address2 <= 8'd0;
-	end
-	// Otherwiser repeatedly write a large checkerboard to memory
-	else begin
-		if ( all_done2 ) begin 
-			// vga_reset <= 1'b_0;
-			write_enable2 <= 1'b0;
-		end
-		else begin 
-			if (state2 == 8'd0) begin 
-				state2 <= 8'd1;
-				if ( done2 ) begin 
-					write_enable2 <= 1'b1;
-					// compute address
-					handshake2 <= 1'b1;
-					write_address2 <= next_write_address2; 
-					next_write_address2 <= write_address2 + 1;
-					// data
-					write_data2 <= color_reg(iterations2);
-				end 
-			end 
-			if (state2 == 8'd1) begin 
-				handshake2 <= 1'b0;
-				write_enable2 <= 1'b0;
-				state2  <= 8'd0 ;
-			end
-		end 
-	end
-
-end 
-
-*/
-reg [9:0] arbiter_state [0:9];
-reg [9:0] x_coord [0:9];
-reg [9:0] y_coord [0:9];
-reg [7:0] state [0:9];
-reg 		[18:0] write_address [0:9];
-reg 		[18:0] next_write_address [0:9];
-reg [7:0] write_data [0:9];
-reg     [9:0]   which_memblock = 0; //new
-reg [9:0] switch_values [0:9] = '{9'd_0, 9'd_48, 9'd_96, 9'd_144, 9'd_192, 9'd_240, 9'd_288, 9'd_336, 9'd_384, 9'd_432};
+reg [9:0] arbiter_state [0:20];
+reg [9:0] x_coord [0:20];
+reg [9:0] y_coord [0:20];
+reg [7:0] state [0:20];
+reg 		[18:0] write_address [0:20];
+reg 		[18:0] next_write_address [0:20];
+reg [7:0] write_data [0:20];
+reg     [5:0]   which_memblock = 0; //new
+//reg [9:0] switch_values [0:20] = '{9'd_0, 9'd_48, 9'd_96, 9'd_144, 9'd_192, 9'd_240, 9'd_288, 9'd_336, 9'd_384, 9'd_432};
 
 // always@(posedge M10k_pll) begin 
 // 	// output which_memblock for one hot decoding later
@@ -514,64 +436,77 @@ reg [9:0] switch_values [0:9] = '{9'd_0, 9'd_48, 9'd_96, 9'd_144, 9'd_192, 9'd_2
 // 	end 
 
 // end 
-
+/*
 always@(*) begin 
 	// default vga driver is outputting next_y, next_x,
 	// i was lazy so just using this for now to calculate true range
 	// then do muxing on this value
 	if (( (19'd_640*next_y) + next_x ) > 19'd_276471) begin 
-		which_memblock = 10'd_9;
+		which_memblock = 5'd_9;
 	end 
 	else if (( (19'd_640*next_y) + next_x ) > 19'd_245752) begin 
-		which_memblock = 10'd_8;
+		which_memblock = 5'd_8;
 	end 
 	else if (( (19'd_640*next_y) + next_x ) > 19'd_215033) begin 
-		which_memblock = 10'd_7;
+		which_memblock = 5'd_7;
 	end 
 	else if (( (19'd_640*next_y) + next_x ) > 19'd_184314) begin 
-		which_memblock = 10'd_6;
+		which_memblock = 5'd_6;
 	end 
 	else if (( (19'd_640*next_y) + next_x ) > 19'd_153595) begin 
-		which_memblock = 10'd_5;
+		which_memblock = 5'd_5;
 	end 
 	else if (( (19'd_640*next_y) + next_x ) > 19'd_122876) begin 
-		which_memblock = 10'd_4;
+		which_memblock = 5'd_4;
 	end 
 	else if (( (19'd_640*next_y) + next_x ) > 19'd_92157) begin 
-		which_memblock = 10'd_3;
+		which_memblock = 5'd_3;
 	end 
 	else if (( (19'd_640*next_y) + next_x ) > 19'd_61438) begin 
-		which_memblock = 10'd_2;
+		which_memblock = 5'd_2;
 	end 
 	else if (( (19'd_640*next_y) + next_x ) > 19'd_30719) begin 
-		which_memblock = 10'd_1;
+		which_memblock = 5'd_1;
 	end 
 	else begin 
 		which_memblock = 0;
 	end
 end
+*/
+always @(*) begin
+    which_memblock = 0; // initialize to 0
+
+    for (int i = 1; i <= 19; i = i+1) begin
+        if (( (19'd_640*next_y) + next_x ) > (range_solver*(i-1)) && ( (19'd_640*next_y) + next_x ) <= (range_solver*i - 1)) begin
+            which_memblock = i-1;
+        end
+    end
+end
+
+
+
 
 
 
 // Instantiate Iterator
-wire [31:0] max_iterations = 32'd100;
-wire done[0:9];
-wire all_done[0:9];
-reg handshake[0:9];
-wire [31:0] iterations[0:9];
+wire [31:0] max_iterations;
+wire done[0:20];
+wire all_done[0:20];
+reg handshake[0:20];
+wire [31:0] iterations[0:20];
 
-reg write_enable[0:9];
+reg write_enable[0:20];
  
-// reg[26:0] ci_init[0:9] = '{27'sh0800000, 27'sh0666666, 27'sh04ccccd, 27'sh0333333, 27'sh019999a, 27'sh0000000, 27'sh7e66666, 27'sh7cccccd, 27'sh7b33333, 27'sh799999a}; //double check
-// reg[26:0] cr_init[0:9] = '{27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000}; //double check
+// reg[26:0] ci_init[0:20] = '{27'sh0800000, 27'sh0666666, 27'sh04ccccd, 27'sh0333333, 27'sh019999a, 27'sh0000000, 27'sh7e66666, 27'sh7cccccd, 27'sh7b33333, 27'sh799999a}; //double check
+// reg[26:0] cr_init[0:20] = '{27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000}; //double check
 
-reg[26:0] cur_ci[0:9];
-reg[26:0] cur_cr[0:9];
+reg[26:0] cur_ci[0:20];
+reg[26:0] cur_cr[0:20];
 
 // instantiate state machines for each m10k block
 genvar i;
 generate
-    for (i = 0; i < 10; i= i+1) begin : block_gen
+    for (i = 0; i < 16; i= i+1) begin : block_gen
         always@(posedge M10k_pll) begin
             // Zero everything in reset
             if (~KEY[0]) begin
@@ -580,7 +515,7 @@ generate
                 // y_coord[i] <= 10'd_0 ;
 				// cur_ci <= '{27'sh0800000, 27'sh0666666, 27'sh04ccccd, 27'sh0333333, 27'sh019999a, 27'sh0000000, 27'sh7e66666, 27'sh7cccccd, 27'sh7b33333, 27'sh799999a}; //double check
                 // cur_cr <= '{27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000, 27'sh7000000}; //double check
-				state[i] <= 8'd0 ;
+					 state[i] <= 8'd0 ;
                 write_address[i] <= 0;
                 next_write_address[i] <= 0;
             end
@@ -590,7 +525,7 @@ generate
                     write_enable[i] <= 1'b0;
                 end
                 else begin 
-                    if (state[i] == 8'd0) begin 
+                    if (state[i] == 8'd0 && i < numSolvers) begin 
                         state[i] <= 8'd1;
                         if (done[i]) begin 
                             write_enable[i] <= 1'b1;
@@ -630,10 +565,13 @@ reg signed [26:0] zoom_center_ci = 0;
 reg signed [26:0] zoom_center_cr = 0;
 reg signed [26:0] cr_incr, ci_incr, cr_stop, cr_reset;
 integer ii, jj;
-reg[26:0] numSteps[0:9] = '{27'sh0, 27'sh7800, 27'shf000, 27'sh16800, 27'sh1e000, 27'sh25800, 27'sh2d000, 27'sh34800, 27'sh3c000, 27'sh43800};
+
+
+//reg[26:0] numSteps[0:20] = '{27'sh0, 27'sh7800, 27'shf000, 27'sh16800, 27'sh1e000, 27'sh25800, 27'sh2d000, 27'sh34800, 27'sh3c000, 27'sh43800};
 
 wire[31:0] counter_output; 
 
+wire [9:0] numCiIncrSolver;
 always@(posedge M10k_pll) begin 
 	LEDR <= 10'd0;
 	iter_rst <= 1'b_0;
@@ -646,8 +584,8 @@ always@(posedge M10k_pll) begin
 		// cur_cr[0] <= 27'sh7000000;
 		counter_output = 32'b0;
 		
-		for(jj=1; jj<10; jj=jj+1) begin 
-			cur_ci[jj] <= init_ci_global - ((27'sh88a4>>zoom) * jj * 10'd48);
+		for(jj=1; jj< 16; jj=jj+1) begin 
+			cur_ci[jj] <= init_ci_global - ((27'sh88a4>>zoom) * jj * numCiIncrSolver);
 			// for(ii=0;ii<48;ii=ii+1) begin
 			// 	cur_ci[jj] <= cur_ci[jj] + 27'sh88a4>>1;
 			// end
@@ -699,7 +637,7 @@ end
 // 		reg[26:0] remainder = val;
 // 		reg[8:0] res = 9'b0;
 // 		reg [9:0] count = 0; //verilog terminbate
-// 		while((count < 10'd50) && (remainder >= 27'd640)) begin
+// 		while((count < 16'd50) && (remainder >= 27'd640)) begin
 // 			remainder = remainder - 27'd640;
 // 			res = res+1;
 // 			count = count + 1;
@@ -725,8 +663,13 @@ end
 integer x;
 always_comb begin
 	all_done_flag = 1'b1;
-	for(x=0; x < 10; x=x+1)  begin 
-		all_done_flag = all_done_flag & all_done[x];
+	for(x=0; x < 16 ; x=x+1)  begin
+        if(x < numSolvers) begin
+		    all_done_flag = all_done_flag & all_done[x];
+        end
+        else begin
+            all_done_flag = all_done_flag;
+        end
 	end
 end
 
@@ -747,6 +690,7 @@ end
 // 	end
 // end
 
+/*
 always@(*) begin
 	// does parallel muxing using casez statement
 	case ( which_memblock )
@@ -800,6 +744,12 @@ always@(*) begin
 		M10k_out = M10k_outs[9];
 		read_address = (19'd_640*next_y) + next_x - 19'd276480;
 	end
+	10'd10: begin
+		//LEDR = 10'd10;
+		M10k_out = M10k_outs[0];
+		read_address = (19'd_640*next_y) + next_x;
+	end
+
 	default: begin
 		//LEDR = 10'd0;
 		M10k_out = M10k_outs[0];
@@ -807,6 +757,26 @@ always@(*) begin
 	end
 	endcase
 end
+*/
+
+always @(*) begin
+  // Initialize read_address and M10k_out to default values
+  //read_address = (19'd_640*next_y) + next_x;
+  //M10k_out = M10k_outs[0];
+
+  // Loop over states 1-9 and set M10k_out and read_address accordingly
+  for (integer i = 0; i <= 15; i = i + 1) begin
+        if (which_memblock == i) begin
+            M10k_out = M10k_outs[i];
+            read_address = (19'd_640*next_y) + next_x - range_solver*i;
+            break;//unsure if kosher
+        end
+    end
+end
+
+
+
+
 
 
 // always@(*) begin
@@ -875,7 +845,7 @@ end
 // Instantiate memory
 genvar j;
 generate
-  for (j = 0; j < 10; j=j+1) begin : M10K_instance
+  for (j = 0; j < 16; j=j+1) begin : M10K_instance
     M10K_1000_8 pixel_data (
       .q({M10k_outs[j]}),
       .d({write_data[j]}),
@@ -938,7 +908,7 @@ function [7:0] color_reg(input [31:0] iterations);
 	end
 endfunction
 
-// function [26:0] calculate_ci_zoom_in[0:9](input [26:0] center);
+// function [26:0] calculate_ci_zoom_in[0:20](input [26:0] center);
 // 	begin
 // 		integer calc_ci;
 // 		for(calc_ci=0; calc_ci<10;calc_ci=calc_ci+1) begin 
@@ -947,7 +917,7 @@ endfunction
 // 	end
 // endfunction
 
-// function [26:0] calculate_cr_zoom_in[0:9](input [26:0] center);
+// function [26:0] calculate_cr_zoom_in[0:20](input [26:0] center);
 // 	begin
 // 		integer calc_cr;
 // 		for(calc_cr=0; calc_cr<10;calc_cr=calc_cr+1) begin 
@@ -958,11 +928,16 @@ endfunction
 
 
 
-//reg[26:0] ci_init[0:9] = '{27'sh0800000, 27'sh0666666, 27'sh04CCCCC, 27'sh0333333, 27'sh0199999, 27'sh0000000, 27'sh7E66667, 27'sh7CCCCCD, 27'sh7B33334, 27'sh799999A}; //double check
+//reg[26:0] ci_init[0:20] = '{27'sh0800000, 27'sh0666666, 27'sh04CCCCC, 27'sh0333333, 27'sh0199999, 27'sh0000000, 27'sh7E66667, 27'sh7CCCCCD, 27'sh7B33334, 27'sh799999A}; //double check
 
+
+
+
+
+wire [31:0] range_solver;
 genvar z;
 generate 
-	for (z = 0; z < 10; z=z+1) begin : iterator_instance
+	for (z = 0; z < 16; z=z+1) begin : iterator_instance
 		iterator iter 
 		(
 			// input
@@ -971,7 +946,7 @@ generate
 			.ci_init(cur_ci[z]),
 			.cr_init(cur_cr[z]),
 			.max_iterations(max_iterations),
-			.range(32'd30720),
+			.range(range_solver),
 			.handshake(handshake[z]),
 			.cr_incr(cr_incr),
 			.ci_incr(ci_incr),
@@ -1039,12 +1014,18 @@ Computer_System The_System (
 	.m10k_pll_locked_export			(M10k_pll_locked),          //      m10k_pll_locked.export
 	.m10k_pll_outclk0_clk			(M10k_pll),            //     m10k_pll_outclk0.clk
 
+
 	//HPS init conditions
 	.pio_init_ci_external_connection_export(init_ci_global),
 	.pio_init_cr_external_connection_export(init_cr_global),
 	.pio_init_zoom_external_connection_export(zoom),
 	.pio_counter_external_export(counter_output),
-	
+	.pio_num_solvers_export(numSolvers),  
+    .pio_num_iterations_export(max_iterations),
+    .pio_range_solvers_export(range_solver),
+    .pio_ci_num_export(numCiIncrSolver),
+
+
 	// Global signals
 	.system_pll_ref_clk_clk					(CLOCK_50),
 	.system_pll_ref_reset_reset			(1'b0),
@@ -1163,7 +1144,7 @@ module vga_driver (
 	input wire clock,
 	input wire reset,
 	input [7:0] color_in,
-	// input [9:0] switch_values [0:9], //staring y value for each memblock
+	// input [9:0] switch_values [0:20], //staring y value for each memblock
 	output [9:0] next_x,
 	output [9:0] next_y,
 	output wire hsync,
@@ -1234,7 +1215,7 @@ module vga_driver (
 	reg 	[7:0]	v_state ;
 
 	// reg     [9:0]   which_memblock_reg; //new
-	// reg     [9:0]   switch_values_reg[0:9]; //new
+	// reg     [9:0]   switch_values_reg[0:20]; //new
 
 	// State machine
 	always@(posedge clock) begin
@@ -1371,7 +1352,7 @@ module M10K_1000_8(
 );
 	 // force M10K ram style
 	 // 307200 words of 8 bits
-    reg [7:0] mem [30720:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
+    reg [7:0] mem [19200:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
 	 
     always @ (posedge clk) begin
         if (we) begin
