@@ -1025,7 +1025,7 @@ Computer_System The_System (
     .pio_num_iterations_export(max_iterations),
     .pio_range_solvers_export(range_solver),
     .pio_ci_num_export(numCiIncrSolver),
-	.pio_reset_export(pio_reset),
+	.pio_reset(pio_reset),
 
 
 	// Global signals
