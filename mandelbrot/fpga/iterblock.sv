@@ -38,7 +38,9 @@ module iterblock(clk, rst, ci, cr, max_iterations, iterations, done);
             temp_zr_2 <= 0;
             done <= 0;
         end
+        // once freeze until reset
         else if ( ~done ) begin 
+            // if max iterations hit point we know point does not diverge
             if(iterations == max_iterations) begin
                 done <= 1;
             end
@@ -46,10 +48,11 @@ module iterblock(clk, rst, ci, cr, max_iterations, iterations, done);
             else begin
                 // fixed point 4
                 iterations <= iterations + 1;
+                // check for diverge
                 if( (zi >= 27'sh1000000) || (zr >= 27'sh1000000) || (zi <= -27'sh1000000) || (zr <= -27'sh1000000)) begin
                     done <= 1;
                 end
-
+                // check for diverge 
                 else if ( (zi_2 + zr_2) > 32'sb0010000000000000000000000000 )begin
                     done <= 1;
                 end
