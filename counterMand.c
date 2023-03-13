@@ -38,6 +38,7 @@
 #define NUMITER_ADDR        0x00000050
 #define RANGE_ADDR        0x00000060
 #define NUM_CI_INCR        0x00000070
+#define RESET_ADDR        0x00000080
 
 
 #define DIVISION_CONST        8388608
@@ -60,6 +61,7 @@ volatile unsigned int * fpga_range_ptr = NULL ;
 volatile unsigned int * fpga_max_iterations_ptr = NULL ;
 volatile unsigned int * fpga_num_ci_incr_ptr = NULL ;
 volatile unsigned int * fpga_num_solvers = NULL ;
+volatile unsigned int * fpga_reset = NULL ;
 
 
 int fd;
@@ -105,6 +107,7 @@ void initPtrs(){
     fpga_max_iterations_ptr = (unsigned int * ) (h2p_lw_virtual_base + NUMITER_ADDR) ;
     fpga_num_ci_incr_ptr = (unsigned int * ) (h2p_lw_virtual_base + NUM_CI_INCR) ;
     fpga_num_solvers = (unsigned int * ) (h2p_lw_virtual_base + NUMSOLV_ADDR);
+    fpga_reset = (unsigned int * ) (h2p_lw_virtual_base + RESET_ADDR);
 
 
 }	
@@ -141,7 +144,7 @@ int main(void)
 
 
 	while(1){
-
+        *(fpga_reset) = 0;
 		printf("enter z for zoom, i for ci, r for cr, t for time, n to set numIters, l to change depth, WASD arrow to move around\n");
 		scanf("%c", &input);
 		if (input == 'z'){
@@ -158,6 +161,7 @@ int main(void)
                 incrI = incrI*(prevZoom-zoom);
                 incrR = incrI*(prevZoom-zoom);
             }
+            *(fpga_reset) = 1;
 		}
 		else if (input == 'i'){
             printf("enter ci \n");
@@ -200,6 +204,7 @@ int main(void)
         }
 
         else if (input == 'w'){
+            *(fpga_reset) = 0;
             printf("Ci is %1.6f \n", ci);
            	//if(ci+incrI <=1.0){
                    ci = ci + incrI;
@@ -208,9 +213,11 @@ int main(void)
 
             fixed_ci = (int)ci * DIVISION_CONST;    
             *(fpga_init_ci_ptr) = fixed_ci;		
+            *(fpga_reset) = 1;
         }
 
         else if (input == 's'){
+            
             printf("Ci is %1.6f \n", ci);
 
            // if(ci-incrI >= -1){
@@ -220,9 +227,11 @@ int main(void)
 
             fixed_ci = (int)ci * DIVISION_CONST;    
             *(fpga_init_ci_ptr) = fixed_ci;		
+            *(fpga_reset) = 1;
         }
 
         else if (input == 'a'){
+            *(fpga_reset) = 1;
             printf("Cr is %1.6f \n", cr);
 
  //          	if(cr-incrR >= -2){
@@ -232,8 +241,10 @@ int main(void)
 
             fixed_cr = (int)cr * DIVISION_CONST;    
             *(fpga_init_cr_ptr) = fixed_cr;		
+            *(fpga_reset) = 1;
         }
         else if (input == 'd'){
+            *(fpga_reset) = 1;
            // printf("Cr is %1.6f \n", cr);
 
            	//if(cr+incrR <=2){
@@ -243,6 +254,7 @@ int main(void)
 
             fixed_cr = (int)cr * DIVISION_CONST;    
             *(fpga_init_cr_ptr) = fixed_cr;		
+            *(fpga_reset) = 1;
         }
 
 

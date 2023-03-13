@@ -504,12 +504,13 @@ reg[26:0] cur_ci[0:20];
 reg[26:0] cur_cr[0:20];
 
 // instantiate state machines for each m10k block
+wire pio_reset; //new
 genvar i;
 generate
-    for (i = 0; i < 16; i= i+1) begin : block_gen
+    for (i = 0; i < 1; i= i+1) begin : block_gen
         always@(posedge M10k_pll) begin
             // Zero everything in reset
-            if (~KEY[0]) begin
+            if (~KEY[0] || pio_reset) begin
                 // arbiter_state[i] <= 10'd_0 ;
                 // x_coord[i] <= 10'd_0 ;
                 // y_coord[i] <= 10'd_0 ;
@@ -575,7 +576,7 @@ wire [9:0] numCiIncrSolver;
 always@(posedge M10k_pll) begin 
 	LEDR <= 10'd0;
 	iter_rst <= 1'b_0;
-	if (~KEY[0]) begin 
+	if (~KEY[0] || pio_reset) begin 
 		iter_rst <= 1'b1;
 		// cur_incr <= 27'sh19999A
 		cur_ci[0] = init_ci_global;
@@ -584,7 +585,7 @@ always@(posedge M10k_pll) begin
 		// cur_cr[0] <= 27'sh7000000;
 		counter_output = 32'b0;
 		
-		for(jj=1; jj< 16; jj=jj+1) begin 
+		for(jj=1; jj< 1; jj=jj+1) begin 
 			cur_ci[jj] <= init_ci_global - ((27'sh88a4>>zoom) * jj * numCiIncrSolver);
 			// for(ii=0;ii<48;ii=ii+1) begin
 			// 	cur_ci[jj] <= cur_ci[jj] + 27'sh88a4>>1;
@@ -663,7 +664,7 @@ end
 integer x;
 always_comb begin
 	all_done_flag = 1'b1;
-	for(x=0; x < 16 ; x=x+1)  begin
+	for(x=0; x < 1 ; x=x+1)  begin
         if(x < numSolvers) begin
 		    all_done_flag = all_done_flag & all_done[x];
         end
@@ -765,7 +766,7 @@ always @(*) begin
   //M10k_out = M10k_outs[0];
 
   // Loop over states 1-9 and set M10k_out and read_address accordingly
-  for (integer i = 0; i <= 15; i = i + 1) begin
+  for (integer i = 0; i <= 0; i = i + 1) begin
         if (which_memblock == i) begin
             M10k_out = M10k_outs[i];
             read_address = (19'd_640*next_y) + next_x - range_solver*i;
@@ -845,7 +846,7 @@ end
 // Instantiate memory
 genvar j;
 generate
-  for (j = 0; j < 16; j=j+1) begin : M10K_instance
+  for (j = 0; j < 1; j=j+1) begin : M10K_instance
     M10K_1000_8 pixel_data (
       .q({M10k_outs[j]}),
       .d({write_data[j]}),
@@ -937,7 +938,7 @@ endfunction
 wire [31:0] range_solver;
 genvar z;
 generate 
-	for (z = 0; z < 16; z=z+1) begin : iterator_instance
+	for (z = 0; z < 1; z=z+1) begin : iterator_instance
 		iterator iter 
 		(
 			// input
@@ -1024,6 +1025,7 @@ Computer_System The_System (
     .pio_num_iterations_export(max_iterations),
     .pio_range_solvers_export(range_solver),
     .pio_ci_num_export(numCiIncrSolver),
+	.pio_reset(pio_reset),
 
 
 	// Global signals
@@ -1352,7 +1354,7 @@ module M10K_1000_8(
 );
 	 // force M10K ram style
 	 // 307200 words of 8 bits
-    reg [7:0] mem [19200:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
+    reg [7:0] mem [307200:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
 	 
     always @ (posedge clk) begin
         if (we) begin
