@@ -58,8 +58,8 @@ solver DUT   (.clk(clk_50),
                 .uij_right(0),
                 .uij_up(0),
                 .uij_down(0),
-                .uij_prev_in(0),
-                .uij_in(0),
+                .uij_prev_in(18'sh_fff),
+                .uij_in(18'sh_fff),
                 .uij_next(testbench_uij_next)
 				);
 endmodule

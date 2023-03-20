@@ -17,9 +17,11 @@ logic signed [17:0] new_drum_temp_2;
 
 logic signed [17:0] uij, uij_prev;
 
-assign new_drum_temp_1 = (uij_left + uij_right + uij_up + uij_down - (uij<<2))>>5;
-assign new_drum_temp_2 = new_drum_temp_1 + (uij - (uij>>13)) - (uij_prev - (uij_prev>>12));
-assign uij_next = new_drum_temp_2 - (new_drum_temp_2>>13);
+
+
+assign new_drum_temp_1 = (uij_left + uij_right + uij_up + uij_down - (uij<<2))>>2;
+assign new_drum_temp_2 = new_drum_temp_1 + uij<<1 - (uij_prev - (uij_prev>>10));
+assign uij_next = new_drum_temp_2 - (new_drum_temp_2>>10);
 
 always@(posedge clk) begin 
     if (rst) begin 
@@ -31,5 +33,7 @@ always@(posedge clk) begin
         uij_prev <= uij;
     end
 end
+
+
 
 endmodule
