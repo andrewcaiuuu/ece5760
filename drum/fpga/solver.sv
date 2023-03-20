@@ -19,8 +19,9 @@ logic signed [17:0] uij, uij_prev;
 
 
 
-assign new_drum_temp_1 = (uij_left + uij_right + uij_up + uij_down - (uij<<2))>>2;
-assign new_drum_temp_2 = new_drum_temp_1 + uij<<1 - (uij_prev - (uij_prev>>10));
+assign new_drum_temp_1 = (uij_left + uij_right + uij_up + uij_down - (uij<<2))>>4; //shift right by 4 corresponds to rho = 1/16
+assign new_drum_temp_2 = (new_drum_temp_1 + (uij<<1) - (uij_prev - (uij_prev>>10)))>>10; // why is it uij_prev - (uij_prev>>10)?
+// assign new_drum_temp_2 = (new_drum_temp_1 + (uij<<1) - (uij_prev>>10))>>10; // multiply the whole expression by 0.9998
 assign uij_next = new_drum_temp_2 - (new_drum_temp_2>>10);
 
 always@(posedge clk) begin 
