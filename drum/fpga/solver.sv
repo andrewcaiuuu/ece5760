@@ -34,7 +34,7 @@ function automatic [17:0] damping(input [17:0] uij_prev, uij, times_rho);
 logic [35:0] damping_ext, uij_times_two;
 begin 
     uij_times_two = {{18{uij[17]}}, uij} << 1;
-    damping_ext =  {{18{times_rho[17]}}, times_rho} + uij_times_two - ( {{18{uij_prev[17]}}, uij_prev} - {{18{uij_prev[17]}}, uij_prev}>>>12);
+    damping_ext =  {{18{times_rho[17]}}, times_rho} + uij_times_two - ({{18{uij_prev[17]}}, uij_prev}) + ({{18{uij_prev[17]}}, uij_prev}>>>12);
     damping = damping_ext[17:0];
 end
 endfunction

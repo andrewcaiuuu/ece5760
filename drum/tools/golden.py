@@ -13,7 +13,7 @@ for i in range(len(t)):
     uij_next = temp  * 0.9999
     u.append(uij)
     u_fixed.append(Fxp(uij, signed=True, n_word=18, n_frac=16).hex())
-    print(u_fixed[i])
+    print(u_fixed[i], u[i])
     uij_prev = uij
     uij = uij_next
 

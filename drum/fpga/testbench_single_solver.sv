@@ -11,8 +11,6 @@ module testbench();
     wire testbench_done;
 	reg [31:0] count, count_in;
 	
-	typedef enum {START, ASSERT_HANDSHAKE} state_type;
-	state_type state, next_state;
 
 	//Initialize clocks and index
 	initial begin
@@ -20,7 +18,6 @@ module testbench();
 		clk_25 = 1'b0;
 		index  = 32'd0;
 		count = 32'd0;
-		state = START;
 		//testbench_out = 15'd0 ;
 	end
 	
@@ -54,10 +51,10 @@ logic signed [17:0] testbench_uij_next;
 	// hook up the sine wave generators
 solver DUT   (.clk(clk_50), 
 				.rst(reset),
-                .uij_left(0),
-                .uij_right(0),
-                .uij_up(0),
-                .uij_down(0),
+                .uij_left(18'h_0),
+                .uij_right(18'h_0),
+                .uij_up(18'h_0),
+                .uij_down(18'h_0),
                 .uij_prev_in(18'h_2000),
                 .uij_in(18'h_2000),
                 .uij_next(testbench_uij_next)
