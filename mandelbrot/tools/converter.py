@@ -1,4 +1,4 @@
 from fxpmath import Fxp
 
-x = Fxp(-0.8, signed=True, n_word=27, n_frac=23)
+x = Fxp(0.125, signed=True, n_word=18, n_frac=16)
 print(x.hex())
