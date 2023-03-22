@@ -1,5 +1,4 @@
 module solver(
-    clk, rst,
     uij_left,
     uij_right,
     uij_up,
@@ -41,6 +40,9 @@ begin
 end
 endfunction
 
+assign uij = uij_in;
+assign uij_prev = uij_prev_in;
+
 assign new_drum_temp_0 = (times_rho(uij_left, uij_right, uij_down, uij_up, uij)); 
 assign new_drum_temp_2 = damping(uij_prev, uij, new_drum_temp_1);
 assign uij_next = new_drum_temp_2 - (new_drum_temp_2>>>10);
@@ -51,17 +53,6 @@ assign rho_eff = (18'sh_7D70 > pos_rho_eff) ? pos_rho_eff : 18'sh_7D70;
 assign g_times_u_center = uij >>> 4; // g = 2^-4
 assign pos_rho_eff = 18'sh_4000 + g_times_u_center_2; // 0.25 + g_times_u_center^2
 
-
-always@(posedge clk) begin 
-    if (rst) begin 
-        uij <= uij_in;
-        uij_prev <= uij_prev_in;
-    end
-    else begin 
-        uij <= uij_next;
-        uij_prev <= uij;
-    end
-end
 
 signed_mult squarer(
     .out(g_times_u_center_2),

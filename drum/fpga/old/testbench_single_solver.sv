@@ -60,4 +60,3 @@ solver DUT   (.clk(clk_50),
                 .uij_next(testbench_uij_next)
 				);
 endmodule
-
