@@ -51,12 +51,12 @@ logic signed [17:0] testbench_uij_next;
 	// hook up the sine wave generators
 solver DUT   (.clk(clk_50), 
 				.rst(reset),
-                .uij_left(18'h_0),
-                .uij_right(18'h_0),
-                .uij_up(18'h_0),
-                .uij_down(18'h_0),
-                .uij_prev_in(18'h_2000),
-                .uij_in(18'h_2000),
+                .uij_left(18'sh_0),
+                .uij_right(18'sh_0),
+                .uij_up(18'sh_0),
+                .uij_down(18'sh_0),
+                .uij_prev_in(18'sh_2000),
+                .uij_in(18'sh_2000),
                 .uij_next(testbench_uij_next)
 				);
 endmodule
