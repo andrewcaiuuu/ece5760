@@ -7,7 +7,6 @@ module solver(
     uij_in,
     uij_next);
 
-input clk, rst;
 input signed [17:0] uij_left, uij_right, uij_up, uij_down, uij_prev_in, uij_in;
 output signed [17:0] uij_next;
 
