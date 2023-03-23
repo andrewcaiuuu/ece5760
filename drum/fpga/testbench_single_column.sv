@@ -46,7 +46,9 @@ module testbench();
 	
 	//Instantiation of Device Under Test
 	// hook up the sine wave generators
+logic signed [17:0] testbench_center_node;
 single_column DUT   (.clk(clk_50), 
-				.rst(reset)
+				.rst(reset), 
+				.center_node(testbench_center_node)
 				);
 endmodule

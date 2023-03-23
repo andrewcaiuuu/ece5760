@@ -1,12 +1,12 @@
 module single_column(
-    clk, rst);
+    clk, rst, center_node);
 
 input clk, rst;
+output signed [17:0] center_node;
 
-logic next_node, node;
-logic init_done;
-
-typedef enum {S_LOAD_REG, S_LOAD_MEM, S_CALC_READ_MEM, S_CALC_WAIT_MEM, S_CALC_COMPUTE, S_CALC_WRITE_MEM, S_DONE} state_t;
+typedef enum {S_LOAD_REG, S_LOAD_MEM, 
+S_CALC_READ_MEM, S_CALC_WAIT_MEM,  S_CALC_COMPUTE, S_CALC_DO_INCR, 
+S_DONE} state_t;
 
 state_t state, next_state;
 
@@ -28,7 +28,7 @@ logic signed [17:0] write_data_1, M10k_out_1;
 // ____________________
 
 // REGISTERS FOR BOTTOM ROW
-logic signed [17:0] u_bottom_reg, uij_prev_reg, uij_reg, uij_down_reg;
+logic signed [17:0] u_bottom_reg, uij_reg, uij_down_reg;
 // ____________________
 
 // LUT SIGNALS
@@ -50,8 +50,10 @@ assign solver_uij_right = 0;
 
 // ASSIGN POSITION CONTROL SIGNALS
 assign at_bottom = (calc_index == 0);
-assign at_top = (calc_index == 4'd_29);
+assign at_top = (calc_index == 5'd_29);
 
+logic signed [17:0] reg_center_node;
+assign center_node = reg_center_node;
 // State machine: moves from top to bottom of column
 always @(posedge clk) begin
     if (rst) begin
@@ -61,10 +63,42 @@ always @(posedge clk) begin
     end
     else begin
         state <= next_state;
-        load_index <= load_index + 1;
-        // if (state == S_CALC_READ_MEM) begin
-        //     calc_index <= calc_index + 1;
-        // end
+        case (state) 
+            S_LOAD_REG: begin
+                u_bottom_reg <= lut_out;
+                load_index <= load_index + 1;
+            end
+
+            S_LOAD_MEM: begin 
+                load_index <= load_index + 1;
+            end
+            S_CALC_COMPUTE: begin 
+                if (at_bottom) begin 
+                    u_bottom_reg <= solver_uij_next;
+                    uij_down_reg <= u_bottom_reg;
+                    uij_reg <= M10k_out;
+                end
+                else if (~at_top) begin 
+                    uij_down_reg <= uij_reg;
+                    uij_reg <= M10k_out;
+                end
+            end
+            S_CALC_DO_INCR: begin
+                if (calc_index < 5'd_29) begin 
+                    calc_index <= calc_index + 1;
+                    if (calc_index == 5'd_15) begin 
+                        reg_center_node <= uij_reg;
+                    end
+                end
+                else begin 
+                    calc_index <= 0;
+                end 
+            end
+            default:  begin
+                load_index <= load_index;
+                calc_index <= calc_index;
+            end
+        endcase
     end
 end
 
@@ -78,11 +112,11 @@ always_comb begin
         S_LOAD_MEM: begin
             next_state = S_LOAD_MEM;
             if (load_index > 28) begin 
-                next_state = S_DONE;
+                next_state = S_CALC_READ_MEM;
             end
         end
 
-        S_CALC_WRITE_MEM: begin 
+        S_CALC_READ_MEM: begin 
             next_state = S_CALC_WAIT_MEM;
         end 
 
@@ -91,11 +125,11 @@ always_comb begin
         end
 
         S_CALC_COMPUTE: begin 
-            next_state = S_CALC_WRITE_MEM;
+            next_state = S_CALC_DO_INCR;
         end
 
-        S_CALC_WRITE_MEM: begin 
-            next_state = S_DONE;
+        S_CALC_DO_INCR: begin 
+            next_state = S_CALC_READ_MEM;
         end
 
         S_DONE: begin
@@ -131,7 +165,7 @@ always_comb begin
             solver_uij_down    = 0;
 
             solver_uij_in      = 0;
-            solver_uij_prev_in = 0;            
+            solver_uij_prev_in = 0;   
 
         end
 
@@ -173,7 +207,7 @@ always_comb begin
             // M10K PREV TIMESTEP
             write_enable_1    = 0;
             write_address_1   = 0;
-            read_address_1    = calc_index + 1;
+            read_address_1    = calc_index;
             write_data_1      = 0;
 
             // SOLVER
@@ -198,7 +232,7 @@ always_comb begin
             // M10K PREV TIMESTEP
             write_enable_1    = 0;
             write_address_1   = 0;
-            read_address_1    = calc_index + 1;
+            read_address_1    = calc_index;
             write_data_1      = 0;
 
             // SOLVER
@@ -214,24 +248,49 @@ always_comb begin
             lut_addr          = 0;
 
             // M10K CUR TIMESTEP
-            write_enable      = 0;
-            write_address     = 0;
+            write_enable      = at_bottom ? 0 : 1;
+            write_address     = calc_index;
             read_address      = calc_index + 1;
-            write_data        = 0;
+            write_data        = solver_uij_next;
 
             // M10K PREV TIMESTEP
-            write_enable_1    = 0;
-            write_address_1   = 0;
+            write_enable_1    = 1;
+            write_address_1   = calc_index;
             read_address_1    = calc_index + 1;
-            write_data_1      = 0;
+            write_data_1      = at_bottom ? u_bottom_reg : uij_reg;
 
             // SOLVER
-            solver_uij_up      = at_top    ? M10k_out     : 0;
+            solver_uij_up      = at_top    ? 0            : M10k_out;
             solver_uij_down    = at_bottom ? 0            : uij_down_reg;
 
             solver_uij_in      = at_bottom ? u_bottom_reg : uij_reg;
             solver_uij_prev_in = M10k_out_1;
         end
+
+        S_CALC_DO_INCR: begin 
+
+            // LUT
+            lut_addr          = 0;
+
+            // M10K CUR TIMESTEP
+            write_enable      = 0;
+            write_address     = calc_index;
+            read_address      = calc_index + 1;
+            write_data        = at_bottom ? M10k_out : solver_uij_next;
+
+            // M10K PREV TIMESTEP
+            write_enable_1    = 0;
+            write_address_1   = calc_index;
+            read_address_1    = calc_index + 1;
+            write_data_1      = at_bottom ? u_bottom_reg : uij_reg;
+
+            // SOLVER
+            solver_uij_up      = at_top    ? 0            : M10k_out;
+            solver_uij_down    = at_bottom ? 0            : uij_down_reg;
+
+            solver_uij_in      = at_bottom ? u_bottom_reg : uij_reg;
+            solver_uij_prev_in = M10k_out_1;
+        end 
 
         default: begin
             // LUT
