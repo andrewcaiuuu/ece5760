@@ -1,12 +1,11 @@
 module single_column(
-    clk, rst, center_node);
+    clk, rst, output_node);
 
 input clk, rst;
-output signed [17:0] center_node;
+output signed [17:0] output_node;
 
 typedef enum {S_LOAD_REG, S_LOAD_MEM, 
-S_CALC_READ_MEM, S_CALC_WAIT_MEM,  S_CALC_COMPUTE, S_CALC_DO_INCR, 
-S_DONE} state_t;
+S_CALC_READ_MEM, S_CALC_WAIT_MEM,  S_CALC_COMPUTE, S_CALC_DO_INCR} state_t;
 
 state_t state, next_state;
 
@@ -52,8 +51,7 @@ assign solver_uij_right = 0;
 assign at_bottom = (calc_index == 0);
 assign at_top = (calc_index == 5'd_29);
 
-logic signed [17:0] reg_center_node;
-assign center_node = reg_center_node;
+assign output_node = uij_reg;
 // State machine: moves from top to bottom of column
 always @(posedge clk) begin
     if (rst) begin
@@ -86,9 +84,6 @@ always @(posedge clk) begin
             S_CALC_DO_INCR: begin
                 if (calc_index < 5'd_29) begin 
                     calc_index <= calc_index + 1;
-                    if (calc_index == 5'd_15) begin 
-                        reg_center_node <= uij_reg;
-                    end
                 end
                 else begin 
                     calc_index <= 0;
@@ -132,11 +127,8 @@ always_comb begin
             next_state = S_CALC_READ_MEM;
         end
 
-        S_DONE: begin
-            next_state = S_DONE;
-        end
         default: begin
-            next_state = S_DONE;
+            next_state = S_LOAD_REG;
         end
     endcase
 end
@@ -274,22 +266,22 @@ always_comb begin
 
             // M10K CUR TIMESTEP
             write_enable      = 0;
-            write_address     = calc_index;
-            read_address      = calc_index + 1;
-            write_data        = at_bottom ? M10k_out : solver_uij_next;
+            write_address     = 0;
+            read_address      = 0;
+            write_data        = 0;
 
             // M10K PREV TIMESTEP
             write_enable_1    = 0;
-            write_address_1   = calc_index;
-            read_address_1    = calc_index + 1;
-            write_data_1      = at_bottom ? u_bottom_reg : uij_reg;
+            write_address_1   = 0;
+            read_address_1    = 0;
+            write_data_1      = 0;
 
             // SOLVER
-            solver_uij_up      = at_top    ? 0            : M10k_out;
-            solver_uij_down    = at_bottom ? 0            : uij_down_reg;
+            solver_uij_up      = 0;
+            solver_uij_down    = 0;
 
-            solver_uij_in      = at_bottom ? u_bottom_reg : uij_reg;
-            solver_uij_prev_in = M10k_out_1;
+            solver_uij_in      = 0;
+            solver_uij_prev_in = 0;
         end 
 
         default: begin
