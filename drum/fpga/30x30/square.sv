@@ -1,4 +1,5 @@
-module square(
+module square#(parameter C = 5'd_1 
+    parameter R = 5'd_30)(
     clk, rst, center_node);
 
 input clk, rst;
@@ -18,13 +19,15 @@ logic [4:0] calc_index;
 // M10K CUR TIMESTEP SIGNALS
 logic [18:0] write_address, read_address;
 logic write_enable;
-logic signed [17:0] write_data, M10k_out;
+logic signed [17:0] write_data [C]; 
+logic signed [17:0] M10k_out [C];
 // ____________________
 
 // M10K PREV TIMESTEP SIGNALS
 logic [18:0] write_address_1, read_address_1;
 logic write_enable_1;
-logic signed [17:0] write_data_1, M10k_out_1;
+logic signed [17:0] write_data_1 [C]; 
+logic signed [17:0] M10k_out_1 [C];
 // ____________________
 
 // REGISTERS FOR BOTTOM ROW
@@ -37,7 +40,13 @@ logic [17:0] lut_out;
 // ____________________
 
 // SOLVER SIGNALS
-logic signed [17:0] solver_uij_left, solver_uij_right, solver_uij_up, solver_uij_down, solver_uij_prev_in, solver_uij_in, solver_uij_next;
+logic signed [17:0] solver_uij_left [C];
+logic signed [17:0] solver_uij_right [C]; 
+logic signed [17:0] solver_uij_up [C];
+logic signed [17:0] solver_uij_down [C]; 
+logic signed [17:0] solver_uij_prev_in [C]; 
+logic signed [17:0] solver_uij_in [C];
+logic signed [17:0] solver_uij_next [C];
 // ____________________
 
 // CONTROL SIGNALS FOR POSITION
@@ -46,7 +55,7 @@ logic at_bottom, at_top;
 
 // ASSIGN POSITION CONTROL SIGNALS
 assign at_bottom = (calc_index == 0);
-assign at_top = (calc_index == 5'd_29);
+assign at_top = (calc_index == (R - 1));
 
 logic signed [17:0] reg_center_node;
 assign center_node = reg_center_node;
@@ -80,7 +89,7 @@ always @(posedge clk) begin
                 end
             end
             S_CALC_DO_INCR: begin
-                if (calc_index < 5'd_29) begin 
+                if (calc_index < (R - 1)) begin 
                     calc_index <= calc_index + 1;
                     if (calc_index == 5'd_15) begin 
                         reg_center_node <= uij_reg;
@@ -107,7 +116,7 @@ always_comb begin
 
         S_LOAD_MEM: begin
             next_state = S_LOAD_MEM;
-            if (load_index > 28) begin 
+            if (load_index > (R - 2)) begin 
                 next_state = S_CALC_READ_MEM;
             end
         end
@@ -344,33 +353,41 @@ init_values_LUT LUT
     .node_value_out(lut_out)
 );
 
-M10K_1000_8 uij_mem (
-    .q(M10k_out),
-    .d(write_data),
-    .write_address(write_address),
-    .read_address(read_address),
-    .we(write_enable),
-    .clk(clk)
-);
+// M10k block and Solver generate
+genvar i;
 
-M10K_1000_8 uij_prev_mem (
-    .q(M10k_out_1),
-    .d(write_data_1),
-    .write_address(write_address_1),
-    .read_address(read_address_1),
-    .we(write_enable_1),
-    .clk(clk)
-);
+generate 
+    for (i = 0; i < C; i ++) begin 
 
-solver DUT (
-    .uij_left(solver_uij_left),
-    .uij_right(solver_uij_right),
-    .uij_up(solver_uij_up),
-    .uij_down(solver_uij_down),
-    .uij_prev_in(solver_uij_prev_in),
-    .uij_in(solver_uij_in),
-    .uij_next(solver_uij_next)
-);
+        M10K_1000_8 uij_mem (
+        .q(M10k_out[i]),
+        .d(write_data[i]),
+        .write_address(write_address),
+        .read_address(read_address),
+        .we(write_enable),
+        .clk(clk)
+        );
+
+        M10K_1000_8 uij_prev_mem (
+        .q(M10k_out_1[i]),
+        .d(write_data_1[i]),
+        .write_address(write_address_1),
+        .read_address(read_address_1),
+        .we(write_enable_1),
+        .clk(clk)
+        );
+
+        solver DUT (
+        .uij_left(solver_uij_left[i]),
+        .uij_right(solver_uij_right[i]),
+        .uij_up(solver_uij_up[i]),
+        .uij_down(solver_uij_down[i]),
+        .uij_prev_in(solver_uij_prev_in[i]),
+        .uij_in(solver_uij_in[i]),
+        .uij_next(solver_uij_next[i])
+        );
+    end 
+endgenerate 
 
 endmodule
 //============================================================
