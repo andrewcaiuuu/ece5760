@@ -1,10 +1,10 @@
 module square#(parameter C = 5'd_30, 
     parameter R = 5'd_30)(
-    clk, rst, top_output_node, top_output_ready, shoot);
+    clk, rst, top_output_node, shoot);
 
 input clk, rst, shoot;
 output signed [17:0] top_output_node;
-output top_output_ready;
+// output top_output_ready;
 
 // M10K CUR TIMESTEP SIGNALS
 logic [18:0] write_address [C];
@@ -37,7 +37,15 @@ logic signed [17:0] me [C];
 logic signed [17:0] output_node [C];
 logic signed [17:0] output_ready [C];
 assign top_output_node = output_node[C>>1];
-assign top_output_ready = output_ready[C>>1];
+// // assign top_output_ready = output_ready[C>>1];
+// always_comb begin 
+//     integer j;
+//     top_output_ready = 1'b1;
+//     for (j = 0; j < C; j++) begin : ready_output_reduction 
+//         top_output_ready = top_output_ready & output_ready[j];
+//     end 
+// end
+
 // M10k block and Solver generate
 genvar i;
 generate 
@@ -96,8 +104,8 @@ generate
         .read_address(read_address[i]),
         .read_address_1(read_address_1[i]),
         .me(me[i]),
-        .output_node(output_node[i]),
-        .output_ready(output_ready[i])
+        .output_node(output_node[i])
+        // .output_ready(output_ready[i])
         );
     end 
 endgenerate 

@@ -32,8 +32,8 @@ write_address,
 write_address_1,
 //____________________
 me,
-output_node,
-output_ready
+output_node
+// output_ready
 
 );
 
@@ -44,7 +44,7 @@ output signed [17:0] write_data, write_data_1;
 output write_enable, write_enable_1;
 output [18:0] read_address, read_address_1, write_address, write_address_1;
 output [17:0] me, output_node;
-output output_ready;
+// output output_ready;
 
 typedef enum {S_LOAD_REG, S_LOAD_MEM, 
 S_CALC_READ_MEM, S_CALC_WAIT_MEM,  S_CALC_COMPUTE, S_CALC_DO_INCR, S_WAIT_SHOOT} 
@@ -85,6 +85,7 @@ logic [18:0] reg_write_address, reg_read_address, reg_write_address_1, reg_read_
 
 logic signed [17:0] reg_write_data, reg_write_data_1, reg_solver_uij_up , reg_solver_uij_down, reg_solver_uij_in, reg_solver_uij_prev_in;
 logic reg_output_ready;
+logic signed [17:0] reg_output_node;
 
 assign write_data = reg_write_data;
 assign write_data_1 = reg_write_data_1;
@@ -98,9 +99,10 @@ assign solver_uij_up = reg_solver_uij_up;
 assign solver_uij_down = reg_solver_uij_down;
 assign solver_uij_in = reg_solver_uij_in;
 assign solver_uij_prev_in = reg_solver_uij_prev_in;
-assign output_ready = reg_output_ready;
+// assign output_ready = reg_output_ready;
 
-assign output_node = (output_ready) ? M10k_out : output_node;
+// assign output_node = (reg_output_ready) ? M10k_out : output_node;
+assign output_node = reg_output_node;
 
 // State machine: moves from top to bottom of column
 always @(posedge clk) begin
@@ -108,6 +110,7 @@ always @(posedge clk) begin
         state <= S_LOAD_REG;
         load_index <= 0;
         calc_index <= 0;
+        reg_output_node <= 0;
     end
     else begin
         state <= next_state;
@@ -139,6 +142,9 @@ always @(posedge clk) begin
                     calc_index <= 0;
                 end 
             end
+            S_WAIT_SHOOT: begin 
+                reg_output_node <= M10k_out;
+            end 
             default:  begin
                 load_index <= load_index;
                 calc_index <= calc_index;
@@ -196,8 +202,7 @@ end
 // State output logic 
 always_comb begin 
     case (state)
-        S_LOAD_REG: begin
-            reg_output_ready          = 0;            
+        S_LOAD_REG: begin        
             // LUT
             lut_addr          = load_index;
 
@@ -223,8 +228,7 @@ always_comb begin
 
         end
 
-        S_LOAD_MEM: begin
-            reg_output_ready          = 0;            
+        S_LOAD_MEM: begin        
             // LUT
             lut_addr          = load_index;
 
@@ -250,8 +254,7 @@ always_comb begin
 
         end
 
-        S_CALC_READ_MEM: begin
-            reg_output_ready          = 0;            
+        S_CALC_READ_MEM: begin      
             // LUT
             lut_addr          = 0;
 
@@ -277,8 +280,7 @@ always_comb begin
 
         end
 
-        S_CALC_WAIT_MEM: begin 
-            reg_output_ready          = 0;            
+        S_CALC_WAIT_MEM: begin         
             // LUT
             lut_addr          = 0;
 
@@ -304,8 +306,7 @@ always_comb begin
 
         end
 
-        S_CALC_COMPUTE: begin 
-            reg_output_ready          = 0;            
+        S_CALC_COMPUTE: begin          
             // LUT
             lut_addr          = 0;
 
@@ -332,7 +333,6 @@ always_comb begin
         end
 
         S_CALC_DO_INCR: begin 
-            reg_output_ready          = 0;
             // LUT
             lut_addr          = 0;
 
@@ -359,7 +359,6 @@ always_comb begin
         end 
 
         S_WAIT_SHOOT: begin
-            reg_output_ready          = 1;
             // LUT
             lut_addr          = load_index;
 
@@ -384,7 +383,6 @@ always_comb begin
         end
 
         default: begin
-            reg_output_ready          = 0;
             // LUT
             lut_addr          = load_index;
 

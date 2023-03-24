@@ -403,10 +403,10 @@ assign LEDR = fifo_space ;
 //assign bus_byte_enable = 4'b1111;
 
 // DDS signals
-reg [31:0] dds_accum ;
+// reg [31:0] dds_accum ;
 // DDS LUT
-wire [15:0] sine_out ;
-sync_rom sineTable(CLOCK_50, dds_accum[31:24], sine_out);
+// wire [15:0] sine_out ;
+// sync_rom sineTable(CLOCK_50, dds_accum[31:24], sine_out);
 
 // get some signals exposed
 // connect bus master signals to i/o for probes
@@ -454,21 +454,32 @@ always @(posedge CLOCK_50) begin //CLOCK_50
 	// -- start write to fifo for each channel
 	// -- first the left channel
 	if (state==4'd2 && fifo_space>8'd2) begin // 
-		if (testbench_output_ready) begin 
-			state <= 4'd3;	
-			// IF SW=10'h200 
-			// and Fout = (sample_rate)/(2^32)*{SW[9:0], 16'b0}
-			// then Fout=48000/(2^32)*(2^25) = 375 Hz
-			dds_accum <= dds_accum + {SW[9:0], 16'b0} ;
-			// convert 16-bit table to 32-bit format
-			bus_write_data <= (testbench_output_node << 14) ;
-			bus_addr <= audio_left_address ;
-			bus_byte_enable <= 4'b1111;
-			bus_write <= 1'b1 ;
-		end 
-		else begin 
-			state <= 4'd2;
-		end
+		state <= 4'd3;	
+		// IF SW=10'h200 
+		// and Fout = (sample_rate)/(2^32)*{SW[9:0], 16'b0}
+		// then Fout=48000/(2^32)*(2^25) = 375 Hz
+		// dds_accum <= dds_accum + {SW[9:0], 16'b0} ;
+		// convert 16-bit table to 32-bit format
+		bus_write_data <= (testbench_output_node << 14) ;
+		bus_addr <= audio_left_address ;
+		bus_byte_enable <= 4'b1111;
+		bus_write <= 1'b1 ;
+
+		// if (testbench_output_ready) begin 
+		// 	state <= 4'd3;	
+		// 	// IF SW=10'h200 
+		// 	// and Fout = (sample_rate)/(2^32)*{SW[9:0], 16'b0}
+		// 	// then Fout=48000/(2^32)*(2^25) = 375 Hz
+		// 	dds_accum <= dds_accum + {SW[9:0], 16'b0} ;
+		// 	// convert 16-bit table to 32-bit format
+		// 	bus_write_data <= (testbench_output_node << 14) ;
+		// 	bus_addr <= audio_left_address ;
+		// 	bus_byte_enable <= 4'b1111;
+		// 	bus_write <= 1'b1 ;
+		// end 
+		// else begin 
+		// 	state <= 4'd2;
+		// end
 
 	end	
 	// if no space, try again later
@@ -490,6 +501,7 @@ always @(posedge CLOCK_50) begin //CLOCK_50
 		bus_write_data <= (testbench_output_node << 14) ;
 		bus_addr <= audio_right_address ;
 		bus_write <= 1'b1 ;
+		testbench_shoot <= 1;
 	end	
 	
 	// detect bus-transaction-complete ACK
@@ -498,7 +510,8 @@ always @(posedge CLOCK_50) begin //CLOCK_50
 	if (state==4'd5 && bus_ack==1) begin
 		state <= 4'd0 ;
 		bus_write <= 0;
-		testbench_shoot <= 1;
+		testbench_shoot <= 0;
+		timer <= 0;
 	end
 	
 end // always @(posedge state_clock)
@@ -654,8 +667,8 @@ reg testbench_shoot;
 square DUT (.clk(CLOCK_50), 
 .rst(~KEY[0]), 
 .shoot(testbench_shoot),
-.top_output_node(testbench_output_node),
-.top_output_ready(testbench_output_ready)
+.top_output_node(testbench_output_node)
+// .top_output_ready(testbench_output_ready)
 );
 
 
