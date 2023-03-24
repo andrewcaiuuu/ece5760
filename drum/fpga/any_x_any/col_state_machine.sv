@@ -1,6 +1,6 @@
 module col_state_machine #(parameter R = 5'd_30)(clk, 
 rst,
-
+shoot,
 // M10K INPUTS
 M10k_out,
 M10k_out_1,
@@ -31,20 +31,23 @@ read_address_1,
 write_address,
 write_address_1,
 //____________________
-me
+me,
+output_node,
+output_ready
 
 );
 
-input clk, rst;
+input clk, rst, shoot;
 input signed [17:0] solver_uij_next, M10k_out, M10k_out_1, left_column, right_column;
 output signed [17:0] solver_uij_down, solver_uij_up, solver_uij_left, solver_uij_right, solver_uij_prev_in, solver_uij_in;
 output signed [17:0] write_data, write_data_1;
 output write_enable, write_enable_1;
 output [18:0] read_address, read_address_1, write_address, write_address_1;
-output [17:0] me;
+output [17:0] me, output_node;
+output output_ready;
 
 typedef enum {S_LOAD_REG, S_LOAD_MEM, 
-S_CALC_READ_MEM, S_CALC_WAIT_MEM,  S_CALC_COMPUTE, S_CALC_DO_INCR} 
+S_CALC_READ_MEM, S_CALC_WAIT_MEM,  S_CALC_COMPUTE, S_CALC_DO_INCR, S_WAIT_SHOOT} 
 state_t;
 
 state_t state, next_state;
@@ -81,6 +84,7 @@ logic reg_write_enable, reg_write_enable_1;
 logic [18:0] reg_write_address, reg_read_address, reg_write_address_1, reg_read_address_1;
 
 logic signed [17:0] reg_write_data, reg_write_data_1, reg_solver_uij_up , reg_solver_uij_down, reg_solver_uij_in, reg_solver_uij_prev_in;
+logic reg_output_ready;
 
 assign write_data = reg_write_data;
 assign write_data_1 = reg_write_data_1;
@@ -94,6 +98,9 @@ assign solver_uij_up = reg_solver_uij_up;
 assign solver_uij_down = reg_solver_uij_down;
 assign solver_uij_in = reg_solver_uij_in;
 assign solver_uij_prev_in = reg_solver_uij_prev_in;
+assign output_ready = reg_output_ready;
+
+assign output_node = (output_ready) ? M10k_out : output_node;
 
 // State machine: moves from top to bottom of column
 always @(posedge clk) begin
@@ -168,6 +175,16 @@ always_comb begin
 
         S_CALC_DO_INCR: begin 
             next_state = S_CALC_READ_MEM;
+            if (calc_index >= (R - 1)) begin 
+                next_state = S_WAIT_SHOOT;
+            end
+        end
+
+        S_WAIT_SHOOT: begin 
+            next_state = S_WAIT_SHOOT;
+            if (shoot) begin 
+                next_state = S_CALC_READ_MEM;
+            end
         end
 
         default: begin
@@ -180,6 +197,7 @@ end
 always_comb begin 
     case (state)
         S_LOAD_REG: begin
+            reg_output_ready          = 0;            
             // LUT
             lut_addr          = load_index;
 
@@ -206,6 +224,7 @@ always_comb begin
         end
 
         S_LOAD_MEM: begin
+            reg_output_ready          = 0;            
             // LUT
             lut_addr          = load_index;
 
@@ -232,6 +251,7 @@ always_comb begin
         end
 
         S_CALC_READ_MEM: begin
+            reg_output_ready          = 0;            
             // LUT
             lut_addr          = 0;
 
@@ -258,6 +278,7 @@ always_comb begin
         end
 
         S_CALC_WAIT_MEM: begin 
+            reg_output_ready          = 0;            
             // LUT
             lut_addr          = 0;
 
@@ -284,19 +305,20 @@ always_comb begin
         end
 
         S_CALC_COMPUTE: begin 
+            reg_output_ready          = 0;            
             // LUT
             lut_addr          = 0;
 
             // M10K CUR TIMESTEP
             reg_write_enable      = at_bottom ? 0 : 1;
             reg_write_address     = calc_index;
-            reg_read_address      = calc_index + 1;
+            reg_read_address      = R >> 1; // read out the center
             reg_write_data        = solver_uij_next;
 
             // M10K PREV TIMESTEP
             reg_write_enable_1    = 1;
             reg_write_address_1   = calc_index;
-            reg_read_address_1    = calc_index + 1;
+            reg_read_address_1    = 0;
             reg_write_data_1      = at_bottom ? u_bottom_reg : uij_reg;
 
             // SOLVER
@@ -310,20 +332,20 @@ always_comb begin
         end
 
         S_CALC_DO_INCR: begin 
-
+            reg_output_ready          = 0;
             // LUT
             lut_addr          = 0;
 
             // M10K CUR TIMESTEP
             reg_write_enable      = 0;
             reg_write_address     = 0;
-            reg_read_address      = calc_index + 1;
+            reg_read_address      = R >> 1; // read out the center
             reg_write_data        = 0;
 
             // M10K PREV TIMESTEP
             reg_write_enable_1    = 0;
             reg_write_address_1   = 0;
-            reg_read_address_1    = calc_index + 1;
+            reg_read_address_1    = 0;
             reg_write_data_1      = 0;
 
             // SOLVER
@@ -336,7 +358,33 @@ always_comb begin
 
         end 
 
+        S_WAIT_SHOOT: begin
+            reg_output_ready          = 1;
+            // LUT
+            lut_addr          = load_index;
+
+            // M10K CUR TIMESTEP
+            reg_write_enable      = 0;
+            reg_write_address     = 0;
+            reg_read_address      = R >> 1; // read out the center
+            reg_write_data        = 0;
+
+            // M10K PREV TIMESTEP
+            reg_write_enable_1    = 0;
+            reg_write_address_1   = 0;
+            reg_read_address_1    = 0;
+            reg_write_data_1      = 0;
+
+            // SOLVER
+            reg_solver_uij_up      = 0;
+            reg_solver_uij_down    = 0;
+
+            reg_solver_uij_in      = 0;
+            reg_solver_uij_prev_in = 0;
+        end
+
         default: begin
+            reg_output_ready          = 0;
             // LUT
             lut_addr          = load_index;
 

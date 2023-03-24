@@ -41,7 +41,7 @@ assign top_output_ready = output_ready[C>>1];
 // M10k block and Solver generate
 genvar i;
 generate 
-    for (i = 0; i < C; i ++) begin : generate_block_identifier
+    for (i = 0; i < C; i ++) begin 
 
         M10K_1000_8 uij_mem (
         .q(M10k_out[i]),
