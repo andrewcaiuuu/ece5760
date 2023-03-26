@@ -145,10 +145,6 @@ always @(posedge clk) begin
             S_WAIT_SHOOT: begin 
                 reg_output_node <= M10k_out;
             end 
-            default:  begin
-                load_index <= load_index;
-                calc_index <= calc_index;
-            end
         endcase
     end
 end
@@ -250,9 +246,7 @@ always_comb begin
 
             reg_solver_uij_in      = 0;
             reg_solver_uij_prev_in = 0;
-       
-
-        end
+        end    
 
         S_CALC_READ_MEM: begin      
             // LUT
@@ -276,8 +270,6 @@ always_comb begin
 
             reg_solver_uij_in      = 0;
             reg_solver_uij_prev_in = 0;
-        
-
         end
 
         S_CALC_WAIT_MEM: begin         
@@ -404,9 +396,8 @@ always_comb begin
 
             reg_solver_uij_in      = 0;
             reg_solver_uij_prev_in = 0;
-
-
         end
+
     endcase
 end
 
