@@ -1,4 +1,4 @@
-module col_state_machine #(parameter R = 10'd_30)(clk, 
+module col_state_machine_embedded_lut #(parameter R = 10'd_30)(clk, 
 rst,
 shoot,
 // M10K INPUTS
@@ -10,7 +10,6 @@ M10k_out_1,
 left_column,
 right_column,
 //____________________
-lut_out,
 
 // SOLVER OUTPUTS
 solver_uij_left,
@@ -33,12 +32,11 @@ write_address,
 write_address_1,
 //____________________
 me,
-output_node,
-lut_addr
+output_node
 // output_ready
 
 );
-input signed [17:0] lut_out;
+
 input clk, rst, shoot;
 input signed [17:0] solver_uij_next, M10k_out, M10k_out_1, left_column, right_column;
 output signed [17:0] solver_uij_down, solver_uij_up, solver_uij_left, solver_uij_right, solver_uij_prev_in, solver_uij_in;
@@ -46,9 +44,6 @@ output signed [17:0] write_data, write_data_1;
 output write_enable, write_enable_1;
 output [18:0] read_address, read_address_1, write_address, write_address_1;
 output [17:0] me, output_node;
-output [9:0] lut_addr;
-logic [9:0] reg_lut_addr;
-assign lut_addr = reg_lut_addr;
 // output output_ready;
 
 typedef enum {S_LOAD_REG, S_LOAD_MEM, 
@@ -67,9 +62,14 @@ logic signed [17:0] uij_reg;
 logic signed [17:0] uij_down_reg;
 // ____________________
 
+// LUT SIGNALS
+logic [9:0] lut_addr;
+logic [17:0] lut_out;
+// ____________________
+
 // VARIOUS COUNTERS
-logic [9:0] load_index;
-logic [9:0] calc_index;
+logic [4:0] load_index;
+logic [4:0] calc_index;
 // ____________________
 
 // ASSIGN POSITION CONTROL SIGNALS
@@ -200,7 +200,7 @@ always_comb begin
     case (state)
         S_LOAD_REG: begin        
             // LUT
-            reg_lut_addr          = load_index;
+            lut_addr          = load_index;
 
             // M10K CUR TIMESTEP
             reg_write_enable      = 0;
@@ -226,7 +226,7 @@ always_comb begin
 
         S_LOAD_MEM: begin        
             // LUT
-            reg_lut_addr          = load_index;
+            lut_addr          = load_index;
 
             // M10K CUR TIMESTEP
             reg_write_enable      = 1;
@@ -250,7 +250,7 @@ always_comb begin
 
         S_CALC_READ_MEM: begin      
             // LUT
-            reg_lut_addr          = 0;
+            lut_addr          = 0;
 
             // M10K CUR TIMESTEP
             reg_write_enable      = 0;
@@ -274,7 +274,7 @@ always_comb begin
 
         S_CALC_WAIT_MEM: begin         
             // LUT
-            reg_lut_addr          = 0;
+            lut_addr          = 0;
 
             // M10K CUR TIMESTEP
             reg_write_enable      = 0;
@@ -300,7 +300,7 @@ always_comb begin
 
         S_CALC_COMPUTE: begin          
             // LUT
-            reg_lut_addr          = 0;
+            lut_addr          = 0;
 
             // M10K CUR TIMESTEP
             reg_write_enable      = at_bottom ? 0 : 1;
@@ -326,7 +326,7 @@ always_comb begin
 
         S_CALC_DO_INCR: begin 
             // LUT
-            reg_lut_addr          = 0;
+            lut_addr          = 0;
 
             // M10K CUR TIMESTEP
             reg_write_enable      = 0;
@@ -352,7 +352,7 @@ always_comb begin
 
         S_WAIT_SHOOT: begin
             // LUT
-            reg_lut_addr          = load_index;
+            lut_addr          = load_index;
 
             // M10K CUR TIMESTEP
             reg_write_enable      = 0;
@@ -376,7 +376,7 @@ always_comb begin
 
         default: begin
             // LUT
-            reg_lut_addr          = load_index;
+            lut_addr          = load_index;
 
             // M10K CUR TIMESTEP
             reg_write_enable      = 0;
@@ -406,5 +406,10 @@ end
 //     .address(lut_addr),
 //     .node_value_out(lut_out)
 // );
+fake_lut LUT 
+(
+    .address(lut_addr),
+    .node_value_out(lut_out)
+);
 
 endmodule

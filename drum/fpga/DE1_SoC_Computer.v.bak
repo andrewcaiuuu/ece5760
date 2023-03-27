@@ -501,6 +501,7 @@ always @(posedge CLOCK_50) begin //CLOCK_50
 		bus_write_data <= (testbench_output_node << 14) ;
 		bus_addr <= audio_right_address ;
 		bus_write <= 1'b1 ;
+		testbench_shoot <= 1;
 	end	
 	
 	// detect bus-transaction-complete ACK
@@ -509,7 +510,7 @@ always @(posedge CLOCK_50) begin //CLOCK_50
 	if (state==4'd5 && bus_ack==1) begin
 		state <= 4'd0 ;
 		bus_write <= 0;
-		testbench_shoot <= 1;
+		testbench_shoot <= 0;
 		timer <= 0;
 	end
 	
@@ -663,16 +664,13 @@ Computer_System The_System (
 wire signed [17:0] testbench_output_node;
 wire testbench_output_ready;
 reg testbench_shoot;
-square #(.C(10'd_30), .R(10'd_30) ) DUT  (.clk(CLOCK_50), 
-	.rst(~KEY[0]), 
-	.shoot(testbench_shoot),
-	.top_output_node(testbench_output_node),
-	.incr(18'sh_888)
-	//.incr(18'sh_51E)
-	// .top_output_ready(testbench_output_ready)
+square DUT  #(.C(10'd_87), .R(10'd_348) )(.clk(CLOCK_50), 
+.rst(~KEY[0]), 
+.shoot(testbench_shoot),
+.top_output_node(testbench_output_node),
+.incr(18'sh_BC)
+// .top_output_ready(testbench_output_ready)
 );
-
-
 
 
 endmodule

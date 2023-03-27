@@ -48,21 +48,11 @@ module testbench();
 	// hook up the sine wave generators
 logic signed [17:0] testbench_output_node;
 logic testbench_output_ready;
-// square DUT   (.clk(clk_50), 
-// 				.rst(reset), 
-// 				.shoot(1),
-// 				.top_output_node(testbench_output_node)
-// 				// .top_output_ready(testbench_output_ready)
-// square #(.R(10'd_30), .C(10'd_30)) DUT (.clk(clk_50), 
-// 				.rst(reset), 
-// 				.shoot(1),
-// 				.top_output_node(testbench_output_node)
-// 				// .top_output_ready(testbench_output_ready)
-// 		);
-square DUT (.clk(clk_50), 
+square #(.C(10'd_50), .R(10'd_50)) DUT   (.clk(clk_50), 
 				.rst(reset), 
-				.shoot(1),
-				.top_output_node(testbench_output_node)
+				.shoot(1'b_1),
+				.top_output_node(testbench_output_node),
+				.incr(18'sh_51E)
 				// .top_output_ready(testbench_output_ready)
-		);
+				);
 endmodule

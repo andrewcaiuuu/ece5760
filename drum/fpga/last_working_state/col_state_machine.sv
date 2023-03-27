@@ -1,6 +1,8 @@
-module col_state_machine #(parameter R = 10'd_30)(clk, 
+module col_state_machine #(parameter R = 5'd_30)(clk, 
 rst,
 shoot,
+// LUT INPUTS
+lut_out,
 // M10K INPUTS
 M10k_out,
 M10k_out_1,
@@ -10,7 +12,6 @@ M10k_out_1,
 left_column,
 right_column,
 //____________________
-lut_out,
 
 // SOLVER OUTPUTS
 solver_uij_left,
@@ -34,21 +35,19 @@ write_address_1,
 //____________________
 me,
 output_node,
+// FAKE LUT OUTPUT
 lut_addr
-// output_ready
-
 );
-input signed [17:0] lut_out;
+
 input clk, rst, shoot;
+input signed [17:0] lut_out;
 input signed [17:0] solver_uij_next, M10k_out, M10k_out_1, left_column, right_column;
 output signed [17:0] solver_uij_down, solver_uij_up, solver_uij_left, solver_uij_right, solver_uij_prev_in, solver_uij_in;
 output signed [17:0] write_data, write_data_1;
+output [9:0] lut_addr;
 output write_enable, write_enable_1;
 output [18:0] read_address, read_address_1, write_address, write_address_1;
 output [17:0] me, output_node;
-output [9:0] lut_addr;
-logic [9:0] reg_lut_addr;
-assign lut_addr = reg_lut_addr;
 // output output_ready;
 
 typedef enum {S_LOAD_REG, S_LOAD_MEM, 
@@ -65,6 +64,12 @@ logic at_bottom, at_top;
 logic signed [17:0] u_bottom_reg;
 logic signed [17:0] uij_reg; 
 logic signed [17:0] uij_down_reg;
+// ____________________
+
+// LUT SIGNALS
+logic [9:0] reg_lut_addr;
+assign lut_addr = reg_lut_addr;
+// logic [17:0] lut_out;
 // ____________________
 
 // VARIOUS COUNTERS
@@ -406,5 +411,8 @@ end
 //     .address(lut_addr),
 //     .node_value_out(lut_out)
 // );
+
+
+
 
 endmodule

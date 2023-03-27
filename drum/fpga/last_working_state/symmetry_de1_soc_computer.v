@@ -465,22 +465,6 @@ always @(posedge CLOCK_50) begin //CLOCK_50
 		bus_byte_enable <= 4'b1111;
 		bus_write <= 1'b1 ;
 
-		// if (testbench_output_ready) begin 
-		// 	state <= 4'd3;	
-		// 	// IF SW=10'h200 
-		// 	// and Fout = (sample_rate)/(2^32)*{SW[9:0], 16'b0}
-		// 	// then Fout=48000/(2^32)*(2^25) = 375 Hz
-		// 	dds_accum <= dds_accum + {SW[9:0], 16'b0} ;
-		// 	// convert 16-bit table to 32-bit format
-		// 	bus_write_data <= (testbench_output_node << 14) ;
-		// 	bus_addr <= audio_left_address ;
-		// 	bus_byte_enable <= 4'b1111;
-		// 	bus_write <= 1'b1 ;
-		// end 
-		// else begin 
-		// 	state <= 4'd2;
-		// end
-
 	end	
 	// if no space, try again later
 	else if (state==4'd2 && fifo_space<=8'd2) begin
@@ -497,16 +481,46 @@ always @(posedge CLOCK_50) begin //CLOCK_50
 	
 	// -- now the right channel
 	if (state==4'd4) begin // 
-		state <= 4'd5;	
+		state <= 4'd9;	
 		bus_write_data <= (testbench_output_node << 14) ;
 		bus_addr <= audio_right_address ;
 		bus_write <= 1'b1 ;
 	end	
+
+    if (state==4'd9 && bus_ack==1) begin
+		state <= 4'd5 ;
+		bus_write <= 0;
+		timer <= 0;
+	end
+
+    // -- rewrite value for symmetry
+    if (state==4'd5) begin 
+        state <= 4'd6;
+        bus_write <= 0;
+    end 
+
+    if (state==4'd6 && fifo_space>8'd2 ) begin
+        state <= 4'd6;
+        bus_write_data <= (testbench_output_node << 14) ;
+		bus_addr <= audio_left_address ;
+		bus_write <= 1'b1 ;
+    end
+    // if no space, try again later
+    else if (state==4'd6 && fifo_space<=8'd2) begin
+        state <= 4'd5;
+    end
+
+    if (state==4'd7) begin 
+        state <= 4'd8;
+        bus_write_data <= (testbench_output_node << 14) ;
+		bus_addr <= audio_right_address ;
+		bus_write <= 1'b1 ;
+    end 
 	
 	// detect bus-transaction-complete ACK
 	// for right channel write
 	// You MUST do this check
-	if (state==4'd5 && bus_ack==1) begin
+	if (state==4'd8 && bus_ack==1) begin
 		state <= 4'd0 ;
 		bus_write <= 0;
 		testbench_shoot <= 1;
