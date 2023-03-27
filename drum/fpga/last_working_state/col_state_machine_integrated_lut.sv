@@ -1,4 +1,4 @@
-module col_state_machine #(parameter R = 5'd_30)(clk, 
+module col_state_machine_integrated_lut #(parameter R = 5'd_30)(clk, 
 rst,
 shoot,
 // LUT INPUTS
@@ -46,7 +46,7 @@ input signed [17:0] incr;
 input signed [17:0] solver_uij_next, M10k_out, M10k_out_1, left_column, right_column;
 output signed [17:0] solver_uij_down, solver_uij_up, solver_uij_left, solver_uij_right, solver_uij_prev_in, solver_uij_in;
 output signed [17:0] write_data, write_data_1;
-output [9:0] lut_addr;
+// output [9:0] lut_addr;
 output write_enable, write_enable_1;
 output [18:0] read_address, read_address_1, write_address, write_address_1;
 output [17:0] me, output_node;

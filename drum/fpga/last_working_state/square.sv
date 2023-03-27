@@ -84,10 +84,11 @@ generate
         .uij_next(solver_uij_next[i])
         );
 
-        col_state_machine #(.R(R)) col_state (
+        col_state_machine_integrated_lut #(.R(R)) col_state (
         //new stuff
-        .lut_addr(lut_addr[i]),
-        .lut_out(lut_out),
+        .incr(i < (C>>1) ? (i * 18'sh_21) : ((C-i-'1) * 18'sh_21)),
+        // .lut_addr(lut_addr[i]),
+        // .lut_out(lut_out),
         .clk(clk),
         .rst(rst),
         .shoot(shoot),
@@ -95,6 +96,8 @@ generate
         .M10k_out_1(M10k_out_1[i]),
         .left_column((i == 0) ? 18'b0 : me[i-1]),
         .right_column((i == (C-1)) ? 18'b0 : me[i+1]),
+        // .left_column((i == 0) ? me[i] : me[i-1]),
+        // .right_column((i == (C-1)) ? me[i] : me[i+1]),
         .solver_uij_left(solver_uij_left[i]),
         .solver_uij_right(solver_uij_right[i]),
         .solver_uij_up(solver_uij_up[i]),
@@ -118,12 +121,12 @@ generate
     end 
 endgenerate 
 
-fake_lut #(.R(R))LUT 
-(
-    .address(lut_addr[0]),
-    .node_value_out(lut_out),
-    .incr(incr)
-);
+// fake_lut #(.R(R))LUT 
+// (
+//     .address(lut_addr[0]),
+//     .node_value_out(lut_out),
+//     .incr(incr)
+// );
 
 endmodule
 //============================================================

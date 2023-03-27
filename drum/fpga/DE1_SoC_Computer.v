@@ -663,7 +663,7 @@ Computer_System The_System (
 wire signed [17:0] testbench_output_node;
 wire testbench_output_ready;
 reg testbench_shoot;
-square #(.C(10'd_30), .R(10'd_30) ) DUT  (.clk(CLOCK_50), 
+square #(.C(10'd_30), .R(10'd_100) ) DUT  (.clk(CLOCK_50), 
 	.rst(~KEY[0]), 
 	.shoot(testbench_shoot),
 	.top_output_node(testbench_output_node),

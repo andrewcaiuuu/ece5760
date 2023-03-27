@@ -41,10 +41,3 @@ fpga_rdy_ptr      = (unsigned int * ) (h2p_lw_virtual_base + FPGA_RDY);
 fpga_out_ptr      = (unsigned int * ) (h2p_lw_virtual_base + FPGA_OUT); 
 fpga_rows_ptr     = (unsigned int * ) (h2p_lw_virtual_base + FPGA_ROWS); 
 fpga_rho_gain_ptr = (unsigned int * ) (h2p_lw_virtual_base + FPGA_RHO_GAIN); 
-
-void * DO_CALC(int rows, float center_peak)
-{
-    float step = (float) center_peak / (float)((int)rows / 2);
-    while ( ! *(fpga_rdy_ptr) ) {} //wait for rdy
-
-}

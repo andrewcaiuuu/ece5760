@@ -322,6 +322,8 @@ always_comb begin
             // SOLVER
             reg_solver_uij_up      = at_top    ? 0            : M10k_out;
             reg_solver_uij_down    = at_bottom ? 0            : uij_down_reg;
+            // reg_solver_uij_up      = M10k_out;
+            // reg_solver_uij_down    = uij_down_reg;
 
             reg_solver_uij_in      = at_bottom ? u_bottom_reg : uij_reg;
             reg_solver_uij_prev_in = M10k_out_1;
