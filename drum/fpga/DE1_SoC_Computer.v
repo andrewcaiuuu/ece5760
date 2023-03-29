@@ -379,6 +379,10 @@ wire [31:0] pio_rows;
 wire [31:0] pio_cols;
 wire [31:0] pio_center_peak;
 
+// M10k memory clock
+wire 					M10k_pll ;
+wire 					M10k_pll_locked ;
+
 //=======================================================
 // Bus controller for AVALON bus-master
 //=======================================================
@@ -469,10 +473,11 @@ always @(posedge CLOCK_50) begin //CLOCK_50
 		// dds_accum <= dds_accum + {SW[9:0], 16'b0} ;
 		// convert 16-bit table to 32-bit format
 		bus_write_data <= (testbench_output_node << 14) ;
+		reg_testbench_output_node <= testbench_output_node;
 		bus_addr <= audio_left_address ;
 		bus_byte_enable <= 4'b1111;
 		bus_write <= 1'b1 ;
-
+		testbench_shoot <= 1;
 		// if (testbench_output_ready) begin 
 		// 	state <= 4'd3;	
 		// 	// IF SW=10'h200 
@@ -506,9 +511,10 @@ always @(posedge CLOCK_50) begin //CLOCK_50
 	// -- now the right channel
 	if (state==4'd4) begin // 
 		state <= 4'd5;	
-		bus_write_data <= (testbench_output_node << 14) ;
+		bus_write_data <= (reg_testbench_output_node << 14) ;
 		bus_addr <= audio_right_address ;
 		bus_write <= 1'b1 ;
+		testbench_shoot <= 0;
 	end	
 	
 	// detect bus-transaction-complete ACK
@@ -517,7 +523,7 @@ always @(posedge CLOCK_50) begin //CLOCK_50
 	if (state==4'd5 && bus_ack==1) begin
 		state <= 4'd0 ;
 		bus_write <= 0;
-		testbench_shoot <= 1;
+		testbench_shoot <= 0;
 		timer <= 0;
 	end
 	
@@ -532,6 +538,9 @@ Computer_System The_System (
 	////////////////////////////////////
 	// FPGA Side
 	////////////////////////////////////
+	// PLL
+	.m10k_pll_locked_export			(M10k_pll_locked),          //      m10k_pll_locked.export
+	.m10k_pll_outclk0_clk			(M10k_pll),            //     m10k_pll_outclk0.clk
 
 	// Global signals
 	.system_pll_ref_clk_clk					(CLOCK_50),
@@ -677,9 +686,10 @@ Computer_System The_System (
 
 
 wire signed [17:0] testbench_output_node;
+reg signed [17:0] reg_testbench_output_node;
 wire testbench_output_ready;
 reg testbench_shoot;
-square #(.C(10'd_60), .R(10'd_60) ) DUT  (.clk(CLOCK_50), 
+square #(.C(10'd_30), .R(10'd_30) ) DUT  (.clk(CLOCK_50), 
 	.rst(~KEY[0]), 
 	.shoot(testbench_shoot),
 	.top_output_node(testbench_output_node),
@@ -688,7 +698,6 @@ square #(.C(10'd_60), .R(10'd_60) ) DUT  (.clk(CLOCK_50),
 	.pio_damping(pio_damping),
 	.pio_rows(pio_rows),
 	.pio_cols(pio_cols)
-	//.incr(18'sh_51E)
 	// .top_output_ready(testbench_output_ready)
 );
 

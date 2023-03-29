@@ -11,10 +11,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
-#include <sys/ipc.h> 
-#include <sys/shm.h> 
+#include <sys/ipc.h>
+#include <sys/shm.h>
 #include <sys/mman.h>
-#include <sys/time.h> 
+#include <sys/time.h>
 #include <math.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -22,18 +22,18 @@
 #include <stdlib.h>
 
 // characters
-#define FPGA_CHAR_BASE        0xC9000000 
+#define FPGA_CHAR_BASE        0xC9000000
 #define FPGA_CHAR_END         0xC9001FFF
 #define FPGA_CHAR_SPAN        0x00002000
 /* Cyclone V FPGA devices */
 #define HW_REGS_BASE          0xff200000
-//#define HW_REGS_SPAN        0x00200000 
-#define HW_REGS_SPAN          0x00005000 
-#define FIXED_CONSTANT = 131072
+//#define HW_REGS_SPAN        0x00200000
+#define HW_REGS_SPAN          0x00005000
+#define FIXED_CONSTANT        131072
 
 float center_peak = 0.75;
-int rows = 60;
-int cols = 60;
+int rows = 30;
+int cols = 30;
 int damping = 11;
 int tension = 4;
 int incr = 0xDA;
@@ -57,26 +57,34 @@ volatile unsigned int * damping_ptr     = NULL ;
 volatile unsigned int * tension_ptr     = NULL ;
 volatile unsigned int * incr_ptr        = NULL ;
 
+int recompute_incr()
+{
+    float intermediate = center_peak / rows;
+    float result = intermediate / cols;
+    int new_incr = result * FIXED_CONSTANT;
+    incr = new_incr;
+    return 0;
+}
 int initPtrs(){
     // === need to mmap: =======================
-	// FPGA_CHAR_BASE
-	// FPGA_ONCHIP_BASE      
-	// HW_REGS_BASE        
-  
-	// === get FPGA addresses ==================
+        // FPGA_CHAR_BASE
+        // FPGA_ONCHIP_BASE
+        // HW_REGS_BASE
+
+        // === get FPGA addresses ==================
     // Open /dev/mem
-	if( ( fd = open( "/dev/mem", ( O_RDWR | O_SYNC ) ) ) == -1 ) 	{
-		printf( "ERROR: could not open \"/dev/mem\"...\n" );
-		return( 1 );
-	}
+        if( ( fd = open( "/dev/mem", ( O_RDWR | O_SYNC ) ) ) == -1 )    {
+                printf( "ERROR: could not open \"/dev/mem\"...\n" );
+                return( 1 );
+        }
 
     // get virtual addr that maps to physical
-	h2p_lw_virtual_base = mmap( NULL, HW_REGS_SPAN, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, HW_REGS_BASE );	
-	if( h2p_lw_virtual_base == MAP_FAILED ) {
-		printf( "ERROR: mmap1() failed...\n" );
-		close( fd );
-		return(1);
-	}
+        h2p_lw_virtual_base = mmap( NULL, HW_REGS_SPAN, ( PROT_READ | PROT_WRITE ), MAP_SHARED, fd, HW_REGS_BASE );
+        if( h2p_lw_virtual_base == MAP_FAILED ) {
+                printf( "ERROR: mmap1() failed...\n" );
+                close( fd );
+                return(1);
+        }
 
     center_peak_ptr   = (unsigned int * ) (h2p_lw_virtual_base + FPGA_CENTER_PEAK);
     col_ptr           = (unsigned int * ) (h2p_lw_virtual_base + FPGA_COLS);
@@ -99,6 +107,7 @@ int main()
                 printf("enter center peak: \n");
                 if (scanf("%f", &new_center_peak)){
                     center_peak = new_center_peak;
+                    recompute_incr();
                 }
                 else{
                     printf("error reading input");
@@ -111,7 +120,7 @@ int main()
                 }
                 else{
                     printf("error reading input");
-                } 
+                }
             } else if (input == 'c'){
                 int new_cols;
                 printf("enter cols: \n");
@@ -153,7 +162,7 @@ int main()
         *(damping_ptr) = damping;
         *(tension_ptr) = tension;
         *(incr_ptr) = incr;
+        printf("wrote out increment of %x \n", incr);
     }
     return 0;
 }
-

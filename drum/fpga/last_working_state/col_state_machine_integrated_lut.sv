@@ -139,6 +139,13 @@ always @(posedge clk) begin
                     uij_down_reg <= uij_reg;
                     uij_reg <= M10k_out;
                 end
+
+                if (calc_index < (R - 1)) begin 
+                    calc_index <= calc_index + 1;
+                end
+                else begin 
+                    calc_index <= 0;
+                end 
             end
             S_CALC_DO_INCR: begin
                 if (calc_index < (R - 1)) begin 
@@ -181,7 +188,12 @@ always_comb begin
         end
 
         S_CALC_COMPUTE: begin 
-            next_state = S_CALC_DO_INCR;
+            // next_state = S_CALC_DO_INCR;
+            next_state = S_CALC_READ_MEM;
+            if (calc_index >= (R - 1)) begin 
+                next_state = S_WAIT_SHOOT;
+                // next_state = S_CALC_READ_MEM;
+            end
         end
 
         S_CALC_DO_INCR: begin 

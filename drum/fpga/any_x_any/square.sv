@@ -1,9 +1,9 @@
 module square#(parameter C = 10'd_30, 
     parameter R = 10'd_30)(
-    clk, rst, top_output_node, shoot, incr);
+    clk, rst, top_output_node, shoot, pio_incr);
 
 input clk, rst, shoot;
-input signed [17:0] incr;
+input signed pio_incr;
 output signed [17:0] top_output_node;
 // output top_output_ready;
 
