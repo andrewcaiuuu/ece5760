@@ -2,12 +2,13 @@ module square#(parameter C = 10'd_30,
     parameter R = 10'd_30)(
     clk, rst, top_output_node, shoot, 
     //pio stuffs
-    pio_incr, pio_tension, pio_damping, pio_rows, pio_cols
+    pio_incr, pio_tension, pio_damping, pio_rows, pio_cols, M10k_pll
     );
 
 input clk, rst, shoot;
 // PIO 
 input [31:0] pio_incr, pio_tension, pio_damping, pio_rows, pio_cols;
+input M10k_pll;
 
 logic signed [17:0] incr;
 assign incr = pio_incr[17:0];

@@ -689,7 +689,7 @@ wire signed [17:0] testbench_output_node;
 reg signed [17:0] reg_testbench_output_node;
 wire testbench_output_ready;
 reg testbench_shoot;
-square #(.C(10'd_30), .R(10'd_30) ) DUT  (.clk(CLOCK_50), 
+square #(.C(10'd_60), .R(10'd_60) ) DUT  (.clk(CLOCK_50), 
 	.rst(~KEY[0]), 
 	.shoot(testbench_shoot),
 	.top_output_node(testbench_output_node),
@@ -697,7 +697,8 @@ square #(.C(10'd_30), .R(10'd_30) ) DUT  (.clk(CLOCK_50),
 	.pio_tension(pio_tension),
 	.pio_damping(pio_damping),
 	.pio_rows(pio_rows),
-	.pio_cols(pio_cols)
+	.pio_cols(pio_cols),
+	.M10k_pll(M10k_pll)
 	// .top_output_ready(testbench_output_ready)
 );
 
