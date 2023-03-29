@@ -145,18 +145,19 @@ always @(posedge clk) begin
                 end
                 else begin 
                     calc_index <= 0;
+                    //reg_output_node <= M10k_out;
                 end 
             end
-            S_CALC_DO_INCR: begin
-                if (calc_index < (R - 1)) begin 
-                    calc_index <= calc_index + 1;
-                end
-                else begin 
-                    calc_index <= 0;
-                end 
+            // S_CALC_DO_INCR: begin
+            //     if (calc_index < (R - 1)) begin 
+            //         calc_index <= calc_index + 1;
+            //     end
+            //     else begin 
+            //         calc_index <= 0;
+            //     end 
 
-                // reg_output_node <= M10k_out;
-            end
+            //     // reg_output_node <= M10k_out;
+            // end
             S_WAIT_SHOOT: begin 
                 reg_output_node <= M10k_out;
             end 
@@ -183,9 +184,9 @@ always_comb begin
             next_state = S_CALC_COMPUTE;
         end 
 
-        S_CALC_WAIT_MEM: begin 
-            next_state = S_CALC_COMPUTE;
-        end
+        // S_CALC_WAIT_MEM: begin 
+        //     next_state = S_CALC_COMPUTE;
+        // end
 
         S_CALC_COMPUTE: begin 
             // next_state = S_CALC_DO_INCR;
@@ -196,13 +197,13 @@ always_comb begin
             end
         end
 
-        S_CALC_DO_INCR: begin 
-            next_state = S_CALC_READ_MEM;
-            if (calc_index >= (R - 1)) begin 
-                next_state = S_WAIT_SHOOT;
-                // next_state = S_CALC_READ_MEM;
-            end
-        end
+        // S_CALC_DO_INCR: begin 
+        //     next_state = S_CALC_READ_MEM;
+        //     if (calc_index >= (R - 1)) begin 
+        //         next_state = S_WAIT_SHOOT;
+        //         // next_state = S_CALC_READ_MEM;
+        //     end
+        // end
 
         S_WAIT_SHOOT: begin 
             next_state = S_WAIT_SHOOT;
@@ -294,31 +295,29 @@ always_comb begin
             reg_solver_uij_prev_in = 0;
         end
 
-        S_CALC_WAIT_MEM: begin         
-            // LUT
-            reg_lut_addr          = 0;
+        // S_CALC_WAIT_MEM: begin         
+        //     // LUT
+        //     reg_lut_addr          = 0;
 
-            // M10K CUR TIMESTEP
-            reg_write_enable      = 0;
-            reg_write_address     = 0;
-            reg_read_address      = calc_index + 1;
-            reg_write_data        = 0;
+        //     // M10K CUR TIMESTEP
+        //     reg_write_enable      = 0;
+        //     reg_write_address     = 0;
+        //     reg_read_address      = calc_index + 1;
+        //     reg_write_data        = 0;
 
-            // M10K PREV TIMESTEP
-            reg_write_enable_1    = 0;
-            reg_write_address_1   = 0;
-            reg_read_address_1    = calc_index;
-            reg_write_data_1      = 0;
+        //     // M10K PREV TIMESTEP
+        //     reg_write_enable_1    = 0;
+        //     reg_write_address_1   = 0;
+        //     reg_read_address_1    = calc_index;
+        //     reg_write_data_1      = 0;
 
-            // SOLVER
-            reg_solver_uij_up      = 0;
-            reg_solver_uij_down    = 0;
+        //     // SOLVER
+        //     reg_solver_uij_up      = 0;
+        //     reg_solver_uij_down    = 0;
 
-            reg_solver_uij_in      = 0;
-            reg_solver_uij_prev_in = 0;
-
-
-        end
+        //     reg_solver_uij_in      = 0;
+        //     reg_solver_uij_prev_in = 0;
+        // end
 
         S_CALC_COMPUTE: begin          
             // LUT
@@ -346,31 +345,29 @@ always_comb begin
 
         end
 
-        S_CALC_DO_INCR: begin 
-            // LUT
-            reg_lut_addr          = 0;
+        // S_CALC_DO_INCR: begin 
+        //     // LUT
+        //     reg_lut_addr          = 0;
 
-            // M10K CUR TIMESTEP
-            reg_write_enable      = 0;
-            reg_write_address     = 0;
-            reg_read_address      = R >> 1; // read out the center
-            reg_write_data        = 0;
+        //     // M10K CUR TIMESTEP
+        //     reg_write_enable      = 0;
+        //     reg_write_address     = 0;
+        //     reg_read_address      = R >> 1; // read out the center
+        //     reg_write_data        = 0;
 
-            // M10K PREV TIMESTEP
-            reg_write_enable_1    = 0;
-            reg_write_address_1   = 0;
-            reg_read_address_1    = 0;
-            reg_write_data_1      = 0;
+        //     // M10K PREV TIMESTEP
+        //     reg_write_enable_1    = 0;
+        //     reg_write_address_1   = 0;
+        //     reg_read_address_1    = 0;
+        //     reg_write_data_1      = 0;
 
-            // SOLVER
-            reg_solver_uij_up      = 0;
-            reg_solver_uij_down    = 0;
+        //     // SOLVER
+        //     reg_solver_uij_up      = 0;
+        //     reg_solver_uij_down    = 0;
 
-            reg_solver_uij_in      = 0;
-            reg_solver_uij_prev_in = 0;
-
-
-        end 
+        //     reg_solver_uij_in      = 0;
+        //     reg_solver_uij_prev_in = 0;
+        // end 
 
         S_WAIT_SHOOT: begin
             // LUT

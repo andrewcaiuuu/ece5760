@@ -689,7 +689,7 @@ wire signed [17:0] testbench_output_node;
 reg signed [17:0] reg_testbench_output_node;
 wire testbench_output_ready;
 reg testbench_shoot;
-square #(.C(10'd_60), .R(10'd_60) ) DUT  (.clk(CLOCK_50), 
+square #(.C(10'd_10), .R(10'd_10) ) DUT  (.clk(CLOCK_50), 
 	.rst(~KEY[0]), 
 	.shoot(testbench_shoot),
 	.top_output_node(testbench_output_node),
