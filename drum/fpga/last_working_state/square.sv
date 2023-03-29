@@ -1,9 +1,17 @@
 module square#(parameter C = 10'd_30, 
     parameter R = 10'd_30)(
-    clk, rst, top_output_node, shoot, incr);
+    clk, rst, top_output_node, shoot, 
+    //pio stuffs
+    pio_incr, pio_tension, pio_damping, pio_rows, pio_cols
+    );
 
 input clk, rst, shoot;
-input signed [17:0] incr;
+// PIO 
+input [31:0] pio_incr, pio_tension, pio_damping, pio_rows, pio_cols;
+
+logic signed [17:0] incr;
+assign incr = pio_incr[17:0];
+
 output signed [17:0] top_output_node;
 // output top_output_ready;
 
@@ -81,12 +89,14 @@ generate
         .uij_down(solver_uij_down[i]),
         .uij_prev_in(solver_uij_prev_in[i]),
         .uij_in(solver_uij_in[i]),
-        .uij_next(solver_uij_next[i])
+        .uij_next(solver_uij_next[i]),
+        .pio_damping(pio_damping),
+        .pio_tension(pio_tension)
         );
 
         col_state_machine_integrated_lut #(.R(R)) col_state (
         //new stuff
-        .incr(i < (C>>1) ? (i * 18'sh_21) : ((C-i-'1) * 18'sh_21)),
+        .incr(i < (C>>1) ? (i * incr) : ((C-i-'1) * incr)),
         // .lut_addr(lut_addr[i]),
         // .lut_out(lut_out),
         .clk(clk),

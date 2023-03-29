@@ -371,6 +371,14 @@ assign HEX2 = 7'b1111111;
 assign HEX1 = 7'b1111111;
 assign HEX0 = 7'b1111111;
 
+// PIO 
+wire [31:0] pio_incr;
+wire [31:0] pio_tension;
+wire [31:0] pio_damping;
+wire [31:0] pio_rows;
+wire [31:0] pio_cols;
+wire [31:0] pio_center_peak;
+
 //=======================================================
 // Bus controller for AVALON bus-master
 //=======================================================
@@ -534,6 +542,14 @@ Computer_System The_System (
 	.av_config_SCLK							(FPGA_I2C_SCLK),
 	.av_config_SDAT							(FPGA_I2C_SDAT),
 
+	// PIO
+	.pio_center_peak_external_connection_export     (pio_center_peak),
+	.pio_cols_external_connection_export     (pio_cols),
+	.pio_rows_external_connection_export     (pio_rows),
+	.pio_damping_external_connection_export  (pio_damping),
+	.pio_tension_external_connection_export  (pio_tension),
+	.pio_incr_external_connection_export     (pio_incr),
+
 	// Audio Subsystem
 	.audio_pll_ref_clk_clk					(CLOCK3_50),
 	.audio_pll_ref_reset_reset				(1'b0),
@@ -663,11 +679,15 @@ Computer_System The_System (
 wire signed [17:0] testbench_output_node;
 wire testbench_output_ready;
 reg testbench_shoot;
-square #(.C(10'd_30), .R(10'd_100) ) DUT  (.clk(CLOCK_50), 
+square #(.C(10'd_60), .R(10'd_60) ) DUT  (.clk(CLOCK_50), 
 	.rst(~KEY[0]), 
 	.shoot(testbench_shoot),
 	.top_output_node(testbench_output_node),
-	.incr(18'sh_888)
+	.pio_incr(pio_incr),
+	.pio_tension(pio_tension),
+	.pio_damping(pio_damping),
+	.pio_rows(pio_rows),
+	.pio_cols(pio_cols)
 	//.incr(18'sh_51E)
 	// .top_output_ready(testbench_output_ready)
 );

@@ -147,6 +147,8 @@ always @(posedge clk) begin
                 else begin 
                     calc_index <= 0;
                 end 
+
+                // reg_output_node <= M10k_out;
             end
             S_WAIT_SHOOT: begin 
                 reg_output_node <= M10k_out;
@@ -170,7 +172,8 @@ always_comb begin
         end
 
         S_CALC_READ_MEM: begin 
-            next_state = S_CALC_WAIT_MEM;
+            // next_state = S_CALC_WAIT_MEM;
+            next_state = S_CALC_COMPUTE;
         end 
 
         S_CALC_WAIT_MEM: begin 
@@ -185,6 +188,7 @@ always_comb begin
             next_state = S_CALC_READ_MEM;
             if (calc_index >= (R - 1)) begin 
                 next_state = S_WAIT_SHOOT;
+                // next_state = S_CALC_READ_MEM;
             end
         end
 
