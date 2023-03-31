@@ -46,13 +46,20 @@ module testbench();
 	
 	//Instantiation of Device Under Test
 	// hook up the sine wave generators
-logic signed [17:0] testbench_output_node;
-logic testbench_output_ready;
-square #(.C(10'd_60), .R(10'd_60)) DUT   (.clk(clk_50), 
-				.rst(reset), 
-				.shoot(1'b_1),
-				.top_output_node(testbench_output_node),
-				.incr(18'sh_888)
-				// .top_output_ready(testbench_output_ready)
-				);
+wire signed [17:0] testbench_output_node;
+reg signed [17:0] reg_testbench_output_node;
+wire testbench_output_ready;
+reg testbench_shoot;
+square #(.C(30'd_10)) DUT  (.clk(clk_50), 
+	.rst(reset), 
+	.shoot('1),
+	.top_output_node(testbench_output_node),
+	.pio_incr(32'sh_147),
+	.pio_tension(32'd_3),
+	.pio_damping(32'd_11),
+	.pio_rows(32'd_10),
+	.pio_cols(32'd_10)
+	// .top_output_ready(testbench_output_ready)
+);
+
 endmodule

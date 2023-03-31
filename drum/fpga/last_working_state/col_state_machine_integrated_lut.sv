@@ -1,4 +1,4 @@
-module col_state_machine_integrated_lut #(parameter R = 5'd_30)(clk, 
+module col_state_machine_integrated_lut (clk, 
 rst,
 shoot,
 // LUT INPUTS
@@ -35,11 +35,12 @@ write_address,
 write_address_1,
 //____________________
 me,
-output_node
+output_node,
+pio_rows
 // FAKE LUT OUTPUT
 // lut_addr
 );
-
+input [31:0] pio_rows;
 input clk, rst, shoot;
 input signed [17:0] incr;
 //input signed [17:0] lut_out;
@@ -80,7 +81,7 @@ logic [9:0] calc_index;
 
 // ASSIGN POSITION CONTROL SIGNALS
 assign at_bottom = (calc_index == 0);
-assign at_top = (calc_index == (R - 1));
+assign at_top = (calc_index == (pio_rows - 1));
 
 assign solver_uij_left = left_column;
 assign solver_uij_right = right_column;
@@ -140,7 +141,7 @@ always @(posedge clk) begin
                     uij_reg <= M10k_out;
                 end
 
-                if (calc_index < (R - 1)) begin 
+                if (calc_index < (pio_rows - 1)) begin 
                     calc_index <= calc_index + 1;
                 end
                 else begin 
@@ -174,7 +175,7 @@ always_comb begin
 
         S_LOAD_MEM: begin
             next_state = S_LOAD_MEM;
-            if (load_index > (R - 2)) begin 
+            if (load_index > (pio_rows - 2)) begin 
                 next_state = S_CALC_READ_MEM;
             end
         end
@@ -191,7 +192,7 @@ always_comb begin
         S_CALC_COMPUTE: begin 
             // next_state = S_CALC_DO_INCR;
             next_state = S_CALC_READ_MEM;
-            if (calc_index >= (R - 1)) begin 
+            if (calc_index >= (pio_rows - 1)) begin 
                 next_state = S_WAIT_SHOOT;
                 // next_state = S_CALC_READ_MEM;
             end
@@ -326,7 +327,7 @@ always_comb begin
             // M10K CUR TIMESTEP
             reg_write_enable      = at_bottom ? 0 : 1;
             reg_write_address     = calc_index;
-            reg_read_address      = R >> 1; // read out the center
+            reg_read_address      = pio_rows >> 1; // read out the center
             reg_write_data        = solver_uij_next;
 
             // M10K PREV TIMESTEP
@@ -376,7 +377,7 @@ always_comb begin
             // M10K CUR TIMESTEP
             reg_write_enable      = 0;
             reg_write_address     = 0;
-            reg_read_address      = R >> 1; // read out the center
+            reg_read_address      = pio_rows >> 1; // read out the center
             reg_write_data        = 0;
 
             // M10K PREV TIMESTEP
@@ -420,7 +421,7 @@ always_comb begin
     endcase
 end
 
-fake_lut #(.R(R)) LUT 
+fake_lut LUT 
 (
     .address(reg_lut_addr),
     .node_value_out(lut_out),

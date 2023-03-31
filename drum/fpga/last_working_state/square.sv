@@ -1,14 +1,12 @@
-module square#(parameter C = 10'd_30, 
-    parameter R = 10'd_30)(
+module square#(parameter C = 10'd_30)(
     clk, rst, top_output_node, shoot, 
     //pio stuffs
-    pio_incr, pio_tension, pio_damping, pio_rows, pio_cols, M10k_pll
+    pio_incr, pio_tension, pio_damping, pio_rows, pio_cols
     );
 
 input clk, rst, shoot;
 // PIO 
 input [31:0] pio_incr, pio_tension, pio_damping, pio_rows, pio_cols;
-input M10k_pll;
 
 logic signed [17:0] incr;
 assign incr = pio_incr[17:0];
@@ -46,7 +44,7 @@ logic signed [17:0] solver_uij_next [C];
 logic signed [17:0] me [C];
 logic signed [17:0] output_node [C];
 logic signed [17:0] output_ready [C];
-assign top_output_node = output_node[C>>1];
+assign top_output_node = (pio_cols <= C) ? output_node[pio_cols>>1] : 18'b0;
 
 // FAKE LUT STUFF
 logic [9:0] lut_addr [C];
@@ -95,9 +93,9 @@ generate
         .pio_tension(pio_tension)
         );
 
-        col_state_machine_integrated_lut #(.R(R)) col_state (
+        col_state_machine_integrated_lut col_state (
         //new stuff
-        .incr(i < (C>>1) ? (i * incr) : ((C-i-'1) * incr)),
+        .incr(i < (pio_cols>>1) ? (i * incr) : ((pio_cols-i-'1) * incr)),
         // .lut_addr(lut_addr[i]),
         // .lut_out(lut_out),
         .clk(clk),
@@ -106,7 +104,8 @@ generate
         .M10k_out(M10k_out[i]),
         .M10k_out_1(M10k_out_1[i]),
         .left_column((i == 0) ? 18'b0 : me[i-1]),
-        .right_column((i == (C-1)) ? 18'b0 : me[i+1]),
+        .right_column((i < (C-1)) ? ( (i == (pio_cols - 1) ) ? me[i + 1] : 18'b0 ) : 18'b0),
+        // .right_column((i == (C-1)) ? 18'b0 : me[i+1]),
         // .left_column((i == 0) ? me[i] : me[i-1]),
         // .right_column((i == (C-1)) ? me[i] : me[i+1]),
         .solver_uij_left(solver_uij_left[i]),
@@ -126,7 +125,8 @@ generate
         .read_address(read_address[i]),
         .read_address_1(read_address_1[i]),
         .me(me[i]),
-        .output_node(output_node[i])
+        .output_node(output_node[i]),
+        .pio_rows(pio_rows)
         // .output_ready(output_ready[i])
         );
     end 

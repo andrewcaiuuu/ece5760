@@ -377,7 +377,7 @@ wire [31:0] pio_tension;
 wire [31:0] pio_damping;
 wire [31:0] pio_rows;
 wire [31:0] pio_cols;
-wire [31:0] pio_center_peak;
+wire pio_reset;
 
 // M10k memory clock
 wire 					M10k_pll ;
@@ -552,7 +552,7 @@ Computer_System The_System (
 	.av_config_SDAT							(FPGA_I2C_SDAT),
 
 	// PIO
-	.pio_center_peak_external_connection_export     (pio_center_peak),
+	.pio_reset_external_connection_export     (pio_reset),
 	.pio_cols_external_connection_export     (pio_cols),
 	.pio_rows_external_connection_export     (pio_rows),
 	.pio_damping_external_connection_export  (pio_damping),
@@ -689,7 +689,7 @@ wire signed [17:0] testbench_output_node;
 reg signed [17:0] reg_testbench_output_node;
 wire testbench_output_ready;
 reg testbench_shoot;
-square #(.C(10'd_10), .R(10'd_10) ) DUT  (.clk(CLOCK_50), 
+square #(.C(10'd_10)) DUT  (.clk(CLOCK_50), 
 	.rst(~KEY[0]), 
 	.shoot(testbench_shoot),
 	.top_output_node(testbench_output_node),
@@ -697,8 +697,7 @@ square #(.C(10'd_10), .R(10'd_10) ) DUT  (.clk(CLOCK_50),
 	.pio_tension(pio_tension),
 	.pio_damping(pio_damping),
 	.pio_rows(pio_rows),
-	.pio_cols(pio_cols),
-	.M10k_pll(M10k_pll)
+	.pio_cols(pio_cols)
 	// .top_output_ready(testbench_output_ready)
 );
 
