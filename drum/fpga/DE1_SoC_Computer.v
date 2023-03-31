@@ -684,20 +684,23 @@ Computer_System The_System (
 	.hps_io_hps_io_usb1_inst_NXT		(HPS_USB_NXT)
 );
 
-
+// assign pio_incr = 32'sh_147;
+// assign pio_rows = 32'd_10;
+// assign pio_cols = 32'd_10;
+// assign pio_tension = 32'd3;
+// assign pio_damping = 32'd10;
 wire signed [17:0] testbench_output_node;
 reg signed [17:0] reg_testbench_output_node;
 wire testbench_output_ready;
 reg testbench_shoot;
-square #(.C(10'd_10)) DUT  (.clk(CLOCK_50), 
+square #(.C(32'd_5), .R(32'd_5)) DUT  (.clk(CLOCK_50), 
 	.rst(~KEY[0]), 
 	.shoot(testbench_shoot),
 	.top_output_node(testbench_output_node),
 	.pio_incr(pio_incr),
 	.pio_tension(pio_tension),
 	.pio_damping(pio_damping),
-	.pio_rows(pio_rows),
-	.pio_cols(pio_cols)
+	.pio_rows(pio_rows)
 	// .top_output_ready(testbench_output_ready)
 );
 

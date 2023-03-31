@@ -110,7 +110,6 @@ assign solver_uij_prev_in = reg_solver_uij_prev_in;
 
 // assign output_node = (reg_output_ready) ? M10k_out : output_node;
 assign output_node = reg_output_node;
-
 // State machine: moves from top to bottom of column
 always @(posedge clk) begin
     if (rst) begin

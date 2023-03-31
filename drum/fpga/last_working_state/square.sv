@@ -1,12 +1,13 @@
-module square#(parameter C = 10'd_30)(
+module square#(parameter C = 10'd_30, 
+    parameter R = 10'd_30)(
     clk, rst, top_output_node, shoot, 
     //pio stuffs
-    pio_incr, pio_tension, pio_damping, pio_rows, pio_cols
+    pio_incr, pio_tension, pio_damping, pio_rows
     );
 
 input clk, rst, shoot;
 // PIO 
-input [31:0] pio_incr, pio_tension, pio_damping, pio_rows, pio_cols;
+input [31:0] pio_incr, pio_tension, pio_damping, pio_rows;
 
 logic signed [17:0] incr;
 assign incr = pio_incr[17:0];
@@ -44,7 +45,8 @@ logic signed [17:0] solver_uij_next [C];
 logic signed [17:0] me [C];
 logic signed [17:0] output_node [C];
 logic signed [17:0] output_ready [C];
-assign top_output_node = (pio_cols <= C) ? output_node[pio_cols>>1] : 18'b0;
+// assign top_output_node = (pio_cols <= C) ? output_node[pio_cols>>1] : 18'b0;
+assign top_output_node = output_node[C>>1];
 
 // FAKE LUT STUFF
 logic [9:0] lut_addr [C];
@@ -64,7 +66,7 @@ genvar i;
 generate 
     for (i = 0; i < C; i ++) begin : generate_block_identifier
 
-        M10K_1000_8 #(.C(C)) uij_mem (
+        M10K_1000_8 #(.R(R)) uij_mem (
         .q(M10k_out[i]),
         .d(write_data[i]),
         .write_address(write_address[i]),
@@ -73,7 +75,7 @@ generate
         .clk(clk)
         );
 
-        M10K_1000_8  #(.C(C)) uij_prev_mem (
+        M10K_1000_8  #(.R(R)) uij_prev_mem (
         .q(M10k_out_1[i]),
         .d(write_data_1[i]),
         .write_address(write_address_1[i]),
@@ -95,7 +97,8 @@ generate
 
         col_state_machine_integrated_lut col_state (
         //new stuff
-        .incr(i < (pio_cols>>1) ? (i * incr) : ((pio_cols-i-'1) * incr)),
+        // .incr(i < (pio_cols>>1) ? (i * incr) : ((pio_cols-i-'1) * incr)),
+        .incr(i < (C>>1) ? (i * incr) : ((C-i-'1) * incr)),
         // .lut_addr(lut_addr[i]),
         // .lut_out(lut_out),
         .clk(clk),
@@ -104,8 +107,8 @@ generate
         .M10k_out(M10k_out[i]),
         .M10k_out_1(M10k_out_1[i]),
         .left_column((i == 0) ? 18'b0 : me[i-1]),
-        .right_column((i < (C-1)) ? ( (i == (pio_cols - 1) ) ? me[i + 1] : 18'b0 ) : 18'b0),
-        // .right_column((i == (C-1)) ? 18'b0 : me[i+1]),
+        // .right_column((i < (C-1)) ? ( (i == (pio_cols - 1) ) ? me[i + 1] : 18'b0 ) : 18'b0),
+        .right_column((i == (C-1)) ? 18'b0 : me[i+1]),
         // .left_column((i == 0) ? me[i] : me[i-1]),
         // .right_column((i == (C-1)) ? me[i] : me[i+1]),
         .solver_uij_left(solver_uij_left[i]),
@@ -147,7 +150,7 @@ endmodule
 // http://people.ece.cornell.edu/land/courses/ece5760/DE1_SOC/HDL_style_qts_qii51007.pdf
 //============================================================
 
-module M10K_1000_8 #(parameter C = 10'd_30) ( 
+module M10K_1000_8 #(parameter R = 10'd_30) ( 
     output reg [17:0] q,
     input [17:0] d,
     input [18:0] write_address, read_address,
@@ -155,7 +158,7 @@ module M10K_1000_8 #(parameter C = 10'd_30) (
 );
 	 // force M10K ram style
 	 // 30 words of 18 bits
-    reg [17:0] mem [C-1:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
+    reg [17:0] mem [R-1:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
 	 
     always @ (posedge clk) begin
         if (we) begin

@@ -31,31 +31,33 @@
 #define HW_REGS_SPAN          0x00005000
 #define FIXED_CONSTANT        131072
 
-float center_peak = 0.75;
-int rows = 30;
-int cols = 30;
+float center_peak = 0.25 ;
+int rows = 10;
 int damping = 11;
 int tension = 4;
-int incr = 0xDA;
+int incr ;
 
 // ODE solver PIO base addresses
-#define FPGA_CENTER_PEAK              0x00000000
-#define FPGA_COLS                     0x00000010
+#define FPGA_RESET                    0x00000000
+#define FPGA_INIT_OUT                 0x00000010
 #define FPGA_ROWS                     0x00000020
 #define FPGA_DAMPING                  0x00000030
 #define FPGA_TENSION                  0x00000040
 #define FPGA_INCR                     0x00000050
+#define FPGA_RESET_ACK                0x00000060
+
 void *h2p_lw_virtual_base;
 int fd;
 // character buffer
 volatile unsigned int * vga_char_ptr = NULL ;
 void *vga_char_virtual_base;
-volatile unsigned int * center_peak_ptr = NULL ;
-volatile unsigned int * col_ptr         = NULL ;
+volatile unsigned int * reset_ptr       = NULL ;
+volatile unsigned int * init_out_ptr         = NULL ;
 volatile unsigned int * row_ptr         = NULL ;
 volatile unsigned int * damping_ptr     = NULL ;
 volatile unsigned int * tension_ptr     = NULL ;
 volatile unsigned int * incr_ptr        = NULL ;
+volatile unsigned int * reset_ack_ptr   = NULL ;
 
 int recompute_incr()
 {
@@ -65,6 +67,17 @@ int recompute_incr()
     incr = new_incr;
     return 0;
 }
+void hit()
+{
+    *(reset_ptr) = 1;
+    while(!*(reset_ack_ptr)){};
+    *(reset_ptr) = 0;
+}
+void set_initial_vals(int cur_row, int cur_col)
+{
+
+}
+
 int initPtrs(){
     // === need to mmap: =======================
         // FPGA_CHAR_BASE
@@ -86,12 +99,13 @@ int initPtrs(){
                 return(1);
         }
 
-    center_peak_ptr   = (unsigned int * ) (h2p_lw_virtual_base + FPGA_CENTER_PEAK);
-    col_ptr           = (unsigned int * ) (h2p_lw_virtual_base + FPGA_COLS);
+    reset_ptr         = (unsigned int * ) (h2p_lw_virtual_base + FPGA_RESET);
+    init_out_ptr      = (unsigned int * ) (h2p_lw_virtual_base + FPGA_INIT_OUT);
     row_ptr           = (unsigned int * ) (h2p_lw_virtual_base + FPGA_ROWS);
     damping_ptr       = (unsigned int * ) (h2p_lw_virtual_base + FPGA_DAMPING);
     tension_ptr       = (unsigned int * ) (h2p_lw_virtual_base + FPGA_TENSION);
     incr_ptr          = (unsigned int * ) (h2p_lw_virtual_base + FPGA_INCR);
+    reset_ack_ptr     = (unsigned int * ) (h2p_lw_virtual_base + FPGA_INCR);
 
 }
 
@@ -99,8 +113,13 @@ int main()
 {
     initPtrs();
     char input;
+    recompute_incr();
+    *(row_ptr) = rows;
+    *(damping_ptr) = damping;
+    *(tension_ptr) = tension;
+    *(incr_ptr) = incr;
     while(1){
-        printf("change params: \n p for peak value, r for rows, c for cols, d for damping, g for tension\n");
+        printf("change params: \n p for peak value, r for rows, d for damping, g for tension\n");
         if (scanf("%c", &input)){
             if (input == 'p'){
                 float new_center_peak;
@@ -117,15 +136,6 @@ int main()
                 printf("enter rows: \n");
                 if (scanf("%d", &new_rows)){
                     rows = new_rows;
-                }
-                else{
-                    printf("error reading input");
-                }
-            } else if (input == 'c'){
-                int new_cols;
-                printf("enter cols: \n");
-                if (scanf("%d", &new_cols)){
-                    cols = new_cols;
                 }
                 else{
                     printf("error reading input");
@@ -156,8 +166,7 @@ int main()
         else{
             printf("error reading input");
         }
-        *(center_peak_ptr) = (int) (center_peak);
-        *(col_ptr) = cols;
+        *(init_out_ptr) = cols;
         *(row_ptr) = rows;
         *(damping_ptr) = damping;
         *(tension_ptr) = tension;

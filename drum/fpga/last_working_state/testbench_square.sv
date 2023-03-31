@@ -50,15 +50,14 @@ wire signed [17:0] testbench_output_node;
 reg signed [17:0] reg_testbench_output_node;
 wire testbench_output_ready;
 reg testbench_shoot;
-square #(.C(30'd_10)) DUT  (.clk(clk_50), 
+square #(.C(32'd_60), .R(32'd_60)) DUT  (.clk(clk_50), 
 	.rst(reset), 
 	.shoot('1),
 	.top_output_node(testbench_output_node),
 	.pio_incr(32'sh_147),
 	.pio_tension(32'd_3),
 	.pio_damping(32'd_11),
-	.pio_rows(32'd_10),
-	.pio_cols(32'd_10)
+	.pio_rows(32'd_10)
 	// .top_output_ready(testbench_output_ready)
 );
 
