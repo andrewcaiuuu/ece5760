@@ -425,6 +425,7 @@ fake_lut LUT
 (
     .address(reg_lut_addr),
     .node_value_out(lut_out),
+    .pio_rows(pio_rows),
     .incr(incr)
 );
 
