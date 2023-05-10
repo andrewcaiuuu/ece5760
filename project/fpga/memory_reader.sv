@@ -8,7 +8,7 @@ module mem_reader( // FPGA ACTING AS PRODUCER
     // arm interface
     input arm_ack,
 
-    input [8:0] image_mem_data,
+    input [17:0] image_mem_data,
     input reset,
 
     output logic fpga_val,
@@ -62,7 +62,7 @@ always@(posedge clk) begin
         addr <= addr + 1;
         state <= 0;
         // count <= count + 1;
-        if (addr == 959) begin 
+        if (addr == 479) begin 
             addr <= 0;
             which_mem <= which_mem + 1;
             if (which_mem == 239) begin 

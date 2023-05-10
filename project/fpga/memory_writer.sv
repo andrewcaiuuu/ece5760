@@ -15,7 +15,7 @@ module mem_writer(
     output logic fpga_ack,
 
     // for memories
-    output logic signed [8:0] d,
+    output logic signed [17:0] d,
     output logic [9:0] addr,
     output logic we,
     output logic [9:0] which_mem,
@@ -47,7 +47,7 @@ always@(posedge clk) begin
         if (arm_val) begin // have a valid request
             we <= 1;
             state <= 1;
-            is_last <= arm_data[16];
+            is_last <= arm_data[31];
             fpga_ack <= 1; // ack the request
         end 
     end 
@@ -67,7 +67,7 @@ always@(posedge clk) begin
     else if (state == 3) begin 
         addr <= addr + 1;
         // count <= count + 1;
-        if (addr == 959) begin 
+        if (addr == 479) begin 
             addr <= 0;
             which_mem <= which_mem + 1;
         end 

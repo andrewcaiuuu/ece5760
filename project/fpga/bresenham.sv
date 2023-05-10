@@ -3,14 +3,15 @@
 module bresenham (
     input clk, 
     input reset,
-    input [7:0] x0, y0, x1, y1,
-    output [7:0] x, y,
+    input [8:0] x0, y0, x1, y1,
+    output [8:0] x, y,
     output logic valid,
-    output logic done
+    output logic done,
+    input logic ack // add this line
 );
 
-logic signed [7:0] reg_x, reg_y;
-logic signed [7:0] dx, dy, sx, sy, err, e2;
+logic signed [8:0] reg_x, reg_y;
+logic signed [8:0] dx, dy, sx, sy, err, e2;
 
 assign x = reg_x;
 assign y = reg_y;
@@ -33,7 +34,7 @@ always_ff @(posedge clk) begin
         sy <= (y0 < y1) ? 1: -1;
         err <= dx - dy;
         valid <= 1'b1;
-    end else if ( valid ) begin 
+    end else if ( valid && ack ) begin 
         if ( e2 > -dy ) begin 
             err <= err - dy;
             reg_x <= reg_x + sx;
@@ -48,6 +49,8 @@ always_ff @(posedge clk) begin
             reg_y <= reg_y + sy;
         end 
         if (reg_x == x1 && reg_y == y1) begin 
+            reg_x <= reg_x;
+            reg_y <= reg_y;
             valid <= 0;
             done <= 1;
         end 

@@ -34,9 +34,9 @@ module testbench();
     end
     
     //Increment 
-    always @ (posedge clk_50) begin
-        index  <= index + 32'd1;
-    end
+    // always @ (posedge clk_50) begin
+    //     index  <= index + 32'd1;
+    // end
 
     //Instantiation of Device Under Test
     // hook up the sine wave generators
@@ -44,15 +44,37 @@ module testbench();
     wire [9:0] testbench_xout;
     wire [9:0] testbench_yout;
     wire testbench_valid;
+
+    logic ack = 0;
+    logic [3:0] state = 1;
+    always @ (posedge clk_50) begin
+        if (state == 0) begin 
+            state <= 0;
+            ack <= 0; // sanity
+        end 
+        else if (state == 1) begin 
+            state <= 2;
+        end 
+        else if (state == 2) begin
+            state <= 3;
+            ack <= 1;
+        end 
+        else if (state == 3) begin 
+            state <= 0;
+            ack <= 0;
+        end 
+    end 
+
 bresenham DUT   (.clk(clk_50), 
                 .reset(reset),
-                .x0(10'd0),
-                .y0(10'd0),
-                .x1(10'd100),
-                .y1(10'd100),
+                .x0(9'd0),
+                .y0(9'd0),
+                .x1(9'd100),
+                .y1(9'd100),
                 .x(testbench_xout),
                 .y(testbench_yout),
-                .valid(testbench_valid)
+                .valid(testbench_valid),
+                .ack(ack)
                 );
     
 endmodule

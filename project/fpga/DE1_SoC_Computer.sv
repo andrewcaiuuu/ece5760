@@ -391,12 +391,12 @@ wire 					M10k_pll_locked ;
 wire  [9:0] image_write_address [0:239];
 wire  [9:0] image_read_address  [0:239];
 wire  image_we                  [0:239];
-wire  [8:0] image_readout       [0:239];
-wire   [8:0] image_writein       [0:239];
+wire  [17:0] image_readout       [0:239];
+wire   [17:0] image_writein       [0:239];
 genvar i;
 generate
     for (i=0; i<240; i=i+1) begin: imageMemGen
-        M10K_1000_8 mem(
+        M10K_1000_18 mem(
             .clk(CLOCK_50),
             .d(image_writein[i]),
             .write_address(image_write_address[i]),
@@ -436,7 +436,7 @@ logic [31:0] mr_fpga_data, mw_fpga_data;
 reg mw_reset;
 wire mw_done, mw_we;
 
-wire [8:0] mw_d;
+wire [17:0] mw_d;
 wire [9:0] mw_which_mem;
 wire [9:0] mw_addr;
 wire [31:0] mw_count;
@@ -463,7 +463,7 @@ mem_writer m_w (
 reg mr_reset;
 wire mr_done;
 
-wire [8:0] mr_image_data;
+wire [17:0] mr_image_data;
 wire [9:0] mr_addr;
 wire [9:0] mr_which_mem;
 wire [31:0] mr_count;
@@ -489,13 +489,13 @@ mem_reader m_r (
 // synthesize 240 comparators
 genvar k;
 generate
-  for (k = 0; k < 240; k=k+1) begin : gen_assignments
-    assign image_write_address[k] = (k == mw_which_mem) ? mw_addr : 0;
-    assign image_writein[k] = (k == mw_which_mem) ? mw_d : 0;
-    assign image_we[k] = (k == mw_which_mem) ? mw_we : 0;
+	for (k = 0; k < 240; k=k+1) begin : gen_assignments
+		assign image_write_address[k] = (k == mw_which_mem) ? mw_addr : 0;
+		assign image_writein[k] = (k == mw_which_mem) ? mw_d : 0;
+		assign image_we[k] = (k == mw_which_mem) ? mw_we : 0;
 
-	assign image_read_address[k] = (k == mr_which_mem) ? mr_addr : 0;
-  end
+		assign image_read_address[k] = (k == mr_which_mem) ? mr_addr : 0;
+	end
 endgenerate
 
 assign mr_image_data = image_readout[mr_which_mem];
@@ -723,15 +723,15 @@ Computer_System The_System (
 
 endmodule
 
-module M10K_1000_8( 
-    output reg [8:0] q,
-    input [8:0] d,
+module M10K_1000_18( 
+    output reg [17:0] q,
+    input [17:0] d,
     input [9:0] write_address, read_address,
     input we, clk
 );
 	 // force M10K ram style
-	 // 960 words of 8 bits representing 2 rows of 480 pixels
-    reg [8:0] mem [959:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
+	 // 480 words of 18 bits representing 2 rows of 480 pixels, MSB is the second row
+    reg [17:0] mem [479:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
 	 
     always @ (posedge clk) begin
         if (we) begin
@@ -741,20 +741,20 @@ module M10K_1000_8(
     end
 endmodule
 
-module M10K_1000_4( 
-    output reg [3:0] q,
-    input [3:0] d,
-    input [9:0] write_address, read_address,
-    input we, clk
-);
-	 // force M10K ram style
-	 // 960 words of 8 bits representing 2 rows of 480 pixels
-    reg [3:0] mem [959:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
+// module M10K_1000_4( 
+//     output reg [3:0] q,
+//     input [3:0] d,
+//     input [9:0] write_address, read_address,
+//     input we, clk
+// );
+// 	 // force M10K ram style
+// 	 // 960 words of 8 bits representing 2 rows of 480 pixels
+//     reg [3:0] mem [959:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
 	 
-    always @ (posedge clk) begin
-        if (we) begin
-            mem[write_address] <= d;
-		  end
-        q <= mem[read_address]; // q doesn't get d in this clock cycle
-    end
-endmodule
+//     always @ (posedge clk) begin
+//         if (we) begin
+//             mem[write_address] <= d;
+// 		  end
+//         q <= mem[read_address]; // q doesn't get d in this clock cycle
+//     end
+// endmodule
