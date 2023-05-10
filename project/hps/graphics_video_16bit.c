@@ -4,7 +4,7 @@
 /// DE1 computer
 /// compile with
 /// gcc graphics_video_16bit.c -o gr -O2 -lm
-/// gcc fpga_thread_art.c -o gr -O2 -lm -std=c99 -pthread
+///
 ///////////////////////////////////////
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,9 +16,7 @@
 #include <sys/mman.h>
 #include <sys/time.h> 
 #include <math.h>
-#include <stdint.h>
-#include <pthread.h>
-// #include "address_map_arm_brl4.h"
+//#include "address_map_arm_brl4.h"
 
 // video display
 #define SDRAM_BASE            0xC0000000
@@ -31,380 +29,7 @@
 /* Cyclone V FPGA devices */
 #define HW_REGS_BASE          0xff200000
 //#define HW_REGS_SPAN        0x00200000 
-#define HW_REGS_SPAN          0x00005000
-
-// PIO BASE ADDRESSES
-#define ARM_DATA_BASE   0x00000000
-#define ARM_VAL_BASE    0x00000010
-#define ARM_RDY_BASE    0x00000020
-
-#define FPGA_DATA_BASE  0x00000030
-#define FPGA_VAL_BASE   0x00000040
-#define FPGA_RDY_BASE   0x00000050
-
-#define PIO_RESET_BASE  0x00000060
-
-#define ARM_ACK_BASE     0x00000070
-#define FPGA_ACK_BASE    0x00000080
-
-// IMAGE CONSTANTS
-#define WHEEL_PIXEL_SIZE 480
-#define N_HOOKS 160 // needs to be divisible by 2
-#define HOOK_PIXEL_SIZE 3
-#define ROWS 480
-#define COLS 480
-#define N_LINES 360
-#define SPACE_SAVER 40 // defined as terms to actually consider
-
-// PIO POINTERS
-volatile unsigned int * arm_data_ptr  =  NULL;
-volatile unsigned int * arm_val_ptr   =  NULL;
-volatile unsigned int * arm_rdy_ptr   =  NULL;
-volatile unsigned int * fpga_data_ptr =  NULL;
-volatile unsigned int * fpga_val_ptr  =  NULL;
-volatile unsigned int * fpga_rdy_ptr  =  NULL;
-volatile unsigned int * pio_reset_ptr =  NULL;
-
-volatile unsigned int * arm_ack_ptr   = NULL;
-volatile unsigned int * fpga_ack_ptr  = NULL;
-
-
-// HELPER STUFF
-struct Tuple {
-	int x;
-	int y;
-};
-
-struct Node {
-	struct Tuple data;
-	struct Node *next;
-};
-
-struct LinkedList {
-	struct Node *head;
-	struct Node *tail;
-};
-
-struct LinkedList *initLinkedList() {
-	struct LinkedList *list = (struct LinkedList *)malloc(sizeof(struct LinkedList));
-	list->head = NULL;
-	list->tail = NULL;
-	return list;
-}
-
-void freeList(struct LinkedList *list) {
-	struct Node *current = list->head;
-	while (current != NULL)
-	{
-		struct Node *temp = current;
-		current = current->next;
-		free(temp);
-	}
-	free(list);
-}
-
-void append(struct LinkedList *list, struct Tuple data) {
-	// allocate memory for the new node
-	struct Node *new_node = (struct Node *)malloc(sizeof(struct Node));
-
-	// set the data of the new node
-	new_node->data = data;
-
-	// set the next pointer of the new node to NULL
-	new_node->next = NULL;
-
-	// if the list is empty, set the new node as the head and tail of the list
-	if (list->head == NULL)
-	{
-		list->head = new_node;
-		list->tail = new_node;
-	}
-	// otherwise, append the new node to the tail of the list
-	else
-	{
-		list->tail->next = new_node;
-		list->tail = new_node;
-	}
-}
-
-void generate_hooks_with_size(struct Tuple *xy)
-{
-	double r = (WHEEL_PIXEL_SIZE / 2.0) - 1.0;
-	double *theta = (double *)malloc((N_HOOKS) * sizeof(double));
-	double epsilon = asin(HOOK_PIXEL_SIZE / WHEEL_PIXEL_SIZE);
-	for (int i = 0; i < (N_HOOKS >> 1); i++)
-	{
-		double angle = (double)i / (double)(N_HOOKS >> 1) * (2.0 * M_PI);
-		theta[i * 2] = angle - epsilon;
-		theta[i * 2 + 1] = angle + epsilon;
-	}
-	for (int j = 0; j < N_HOOKS; j++)
-	{
-		struct Tuple point;
-		point.x = r * (1.0 + cos(theta[j])) + 0.5;
-		point.y = r * (1.0 + sin(theta[j])) + 0.5;
-		xy[j] = point;
-	}
-	free(theta);
-}
-
-void generate_unique_random_numbers(int min, int max, int exclude, int N, int *result)
-{
-	int range = max - min + 1;
-	int adjusted_range = range - (exclude >= min && exclude <= max);
-	if (N > adjusted_range)
-	{
-		printf("Error: Cannot generate %d unique random numbers in the given range.\n", N);
-		return;
-	}
-
-	int *flags = (int *)calloc(range, sizeof(int));
-	flags[exclude - min] = 1;
-
-	for (int i = 0; i < N; i++)
-	{
-		int rand_num;
-		do
-		{
-			rand_num = rand() % range + min;
-		} while (flags[rand_num - min]);
-
-		flags[rand_num - min] = 1;
-		result[i] = rand_num;
-	}
-
-	free(flags);
-}
-
-// NEW STUFF
-
-
-void read_array(int *array, char *path) {
-	// open the input file
-	FILE *fp = fopen(path, "r");
-	if (fp == NULL)
-	{
-		printf("Failed to open file \n");
-	}
-	int count = 0;
-	// read the integers from the file into the array
-	for (int i = 0; i < ROWS; i++)
-	{
-		for (int j = 0; j < COLS; j++)
-		{
-			int cur;
-			if (!fscanf(fp, "%d", &cur))
-			{
-				printf("FAIL");
-			}
-			count++;
-			array[i * COLS + j] = cur;
-		}
-	}
-
-	// close the input file
-	fclose(fp);
-	printf("count: %d\n", count);
-}
-
-void *RESET()
-{ // Reset Thread
-	for (;;)
-	{
-		if (*(pio_reset_ptr))
-		{
-			*(arm_val_ptr) = 0;
-			*(arm_rdy_ptr) = 0;
-			*(arm_data_ptr) = 0;
-			*(arm_ack_ptr) = 0;
-			// printf("RESET HIT\n");
-		}
-	}
-}
-
-void *SERVICE_VERIFY(){
-	int *ah_monochrome = malloc((ROWS * COLS) * sizeof(int));
-	read_array(ah_monochrome, "ah_monochrome.txt");
-	int count = 0;
-	int mismatch_count = 0;
-	for (int i = 0; i < ROWS; i++)
-	{
-		for (int j = 0; j < COLS; j++)
-		{
-			*(arm_ack_ptr) = 0;
-			while ( ! *(fpga_val_ptr)) { // wait for valid data from FPGA
-			}
-			// printf("got: %d, expected: %d \n", *(fpga_data_ptr), ah_monochrome[i * COLS + j]);
-			// printf("count: %d\n", count);
-			if (*(fpga_data_ptr) != ah_monochrome[i * COLS + j]){
-				mismatch_count ++;
-			}
-			count ++;
-			*(arm_ack_ptr) = 1; // ack the data
-			while (! *(fpga_ack_ptr)) { // wait for FPGA to read ack
-			}
-			*(arm_ack_ptr) = 0; // reset ack
-			while (*(fpga_ack_ptr )){ // wait for FPGA to reset ack
-			}
-		}
-	}
-	printf("MISMATCHES: %d\n", mismatch_count);
-	free(ah_monochrome);
-}
-
-void *SERVICE_WRITE()
-{
-	int *ah_monochrome = malloc((ROWS * COLS) * sizeof(int));
-	read_array(ah_monochrome, "ah_monochrome.txt");
-	int count = 0;
-	for (int i = 0; i < ROWS; i++)
-	{
-		for (int j = 0; j < COLS; j++)
-		{
-			// printf("count: %d\n", count);
-			*(arm_val_ptr) = 0;
-			uint16_t cur = (uint16_t)ah_monochrome[i * COLS + j];
-			uint16_t is_last = i == ROWS - 1 && j == COLS - 1;
-			uint32_t combined;
-			combined = ((uint32_t)is_last << 16) | cur;
-			// printf("is last %d\n", is_last);
-			*(fpga_data_ptr) = combined;
-			count++;
-
-
-			*(arm_val_ptr) = 1; // try to transfer
-			while ( !*(fpga_ack_ptr) ) { // wait for fpga to ack
-			}
-			*(arm_val_ptr) = 0; // clear our val
-
-			// once acked, send clear flag, through the form of return ack
-			*(arm_ack_ptr) = 1;
-			while ( *(fpga_ack_ptr) ) { // wait for fpga to clear ack
-			}
-			*(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
-		}
-	}
-	printf("DONE WRITING MEM\n");
-	free(ah_monochrome);
-}
-
-void *SERVICE_CALC()
-{
-	*(arm_val_ptr) = 0; // sanity check
-	*(arm_ack_ptr) = 0; // sanity check
-	struct Tuple *line_list = (struct Tuple *)malloc(N_LINES * sizeof(struct Tuple) * 2);
-	struct Tuple *xy = (struct Tuple *)malloc(N_HOOKS * sizeof(struct Tuple));
-	generate_hooks_with_size(xy);
-
-	int prev_edge = rand() % N_HOOKS;
-	for (int i = 0; i < N_LINES; i++){
-		starting_edge = prev_edge;
-		int *chosen = (int *)malloc(SPACE_SAVER * sizeof(int));
-		generate_unique_random_numbers(0, N_HOOKS - 1, starting_edge, SPACE_SAVER, chosen);
-		
-		// have the randomly chosen indices to consider, transfer to fpga
-
-		// FIRST TRANSFER THE STARTING POINT===============================
-		*(arm_val_ptr) = 0;
-
-		int is_last_line = i == N_LINES - 1;
-		uint32_t combined;
-		uint16_t x = (uint16_t)xy[starting_edge].x;
-		uint16_t y = (uint16_t)xy[starting_edge].y;
-		combined = ((uint32_t)is_last_line << 31) | (( (uint32_t) y << 16) | x); // bit 31 is is_last, bits 30-16 is y, bits 15-0 is x
-		*(fpga_data_ptr) = combined;
-
-		*(arm_val_ptr) = 1; // try to transfer
-		while (!*(fpga_ack_ptr))
-		{ // wait for fpga to ack
-		}
-		*(arm_val_ptr) = 0; // clear our val
-
-		// once acked, send clear flag, through the form of return ack
-		*(arm_ack_ptr) = 1;
-		while (*(fpga_ack_ptr))
-		{ // wait for fpga to clear ack
-		}
-		*(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
-		// FIRST TRANSFER THE STARTING POINT===============================
-
-		for (int j = 0; j < SPACE_SAVER; j++){
-			*(arm_val_ptr) = 0;
-			int ending_edge = chosen[j];
-
-			uint32_t is_last_chosen = j == SPACE_SAVER - 1;
-			uint32_t combined_last = ((uint32_t)is_last_line << 31) | ((uint32_t)is_last_chosen << 15); 
-
-			uint32_t combined;
-			uint16_t x = (uint16_t)xy[ending_edge].x;
-			uint16_t y = (uint16_t)xy[ending_edge].y;
-
-			combined = combined_last | (( (uint32_t) y << 16) | x); // bit 31 is is_last, bits 30-16 is y, bit 15 is is_last, bits 14-0 is x
-			*(fpga_data_ptr) = combined;
-			*(arm_val_ptr) = 1; // try to transfer
-			while (!*(fpga_ack_ptr))
-			{ // wait for fpga to ack
-			}
-			*(arm_val_ptr) = 0; // clear our val
-
-			// once acked, send clear flag, through the form of return ack
-			*(arm_ack_ptr) = 1;
-			while (*(fpga_ack_ptr))
-			{ // wait for fpga to clear ack
-			}
-			*(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
-		}
-
-		// values have been transferred, now wait for fpga to calculate
-		*(arm_ack_ptr) = 0; // sanity check
-		while (!*(fpga_val_ptr)) { // wait for valid data from FPGA
-		}
-		// update the values
-		int best_edge = *(fpga_data_ptr);
-		line_list[i * 2] = xy[starting_edge];
-		line_list[i * 2 + 1] = xy[best_edge];
-
-		*(arm_ack_ptr) = 1; // ack the data
-		while (!*(fpga_ack_ptr))
-		{ // wait for FPGA to read ack
-		}
-		*(arm_ack_ptr) = 0; // reset ack
-		while (*(fpga_ack_ptr))
-		{ // wait for FPGA to reset ack
-		}
-	}
-	printf("DONE CALCULATING\n");
-
-
-	// Open the file for writing
-	printf("WRITING OUTPUT FILE\n");
-	FILE *file = fopen("fpga_output.txt", "w");
-	if (file == NULL)
-	{
-		printf("Error opening the file.\n");
-		return 1;
-	}
-	// Write the array elements to the file
-	for (int i = 0; i < N_LINES; i++)
-	{
-		fprintf(file, "%d", line_list[i * 2].x);
-		fprintf(file, " %d", line_list[i * 2].y);
-		fprintf(file, " %d", line_list[i * 2 + 1].x);
-		fprintf(file, " %d", line_list[i * 2 + 1].y);
-		// Use a newline character instead of a comma to separate elements
-		if (i < N_LINES - 1)
-		{
-			fprintf(file, "\n");
-		}
-	}
-	// Close the file
-	fclose(file);
-
-	printf("DONE WRITING\n");
-
-	free(xy);
-	free(line_list);
-}
+#define HW_REGS_SPAN          0x00005000 
 
 // graphics primitives
 void VGA_text (int, int, char *);
@@ -480,17 +105,7 @@ int main(void)
 		return(1);
 	}
     
-	// map PIO
-	arm_data_ptr =(unsigned int *)(h2p_lw_virtual_base + ARM_DATA_BASE);
-	arm_val_ptr =(unsigned int *)(h2p_lw_virtual_base + ARM_VAL_BASE);
-	arm_rdy_ptr =(unsigned int *)(h2p_lw_virtual_base + ARM_RDY_BASE);
-	fpga_data_ptr =(unsigned int *)(h2p_lw_virtual_base + FPGA_DATA_BASE);
-	fpga_val_ptr =(unsigned int *)(h2p_lw_virtual_base + FPGA_VAL_BASE);
-	fpga_rdy_ptr =(unsigned int *)(h2p_lw_virtual_base + FPGA_RDY_BASE);
-	pio_reset_ptr =(unsigned int *)(h2p_lw_virtual_base + PIO_RESET_BASE);
 
-	arm_ack_ptr = (unsigned int *)(h2p_lw_virtual_base + ARM_ACK_BASE);
-	fpga_ack_ptr = (unsigned int *)(h2p_lw_virtual_base + FPGA_ACK_BASE);
 	// === get VGA char addr =====================
 	// get virtual addr that maps to physical
 	vga_char_virtual_base = mmap( NULL, FPGA_CHAR_SPAN, ( 	PROT_READ | PROT_WRITE ), MAP_SHARED, fd, FPGA_CHAR_BASE );	
@@ -519,6 +134,12 @@ int main(void)
 
 	/* create a message to be displayed on the VGA 
           and LCD displays */
+	char text_top_row[40] = "DE1-SoC ARM/FPGA\0";
+	char text_bottom_row[40] = "Cornell ece5760\0";
+	char text_next[40] = "Graphics primitives\0";
+	char num_string[20], time_string[20] ;
+	char color_index = 0 ;
+	int color_counter = 0 ;
 	
 	// position of disk primitive
 	int disc_x = 0;
@@ -531,49 +152,75 @@ int main(void)
 	// position of horizontal line primitive
 	int Hline_y = 250;
 
+	//VGA_text (34, 1, text_top_row);
+	//VGA_text (34, 2, text_bottom_row);
 	// clear the screen
 	VGA_box (0, 0, 639, 479, 0x0000);
 	// clear the text
 	VGA_text_clear();
+	// write text
+	VGA_text (10, 1, text_top_row);
+	VGA_text (10, 2, text_bottom_row);
+	VGA_text (10, 3, text_next);
 	
 	// R bits 11-15 mask 0xf800
 	// G bits 5-10  mask 0x07e0
 	// B bits 0-4   mask 0x001f
 	// so color = B+(G<<5)+(R<<11);
-
-	pthread_t thread_reset;
-
-	pthread_create(&thread_reset, NULL, RESET, NULL);
-
 	
-
 	while(1) 
 	{
-		*(arm_val_ptr) = 0;
-		*(arm_rdy_ptr) = 0;
-		*(arm_data_ptr) = 0;
-		*(arm_ack_ptr) = 0;
-		printf("press w to write FPGA memory, v to verify FPGA memory \n");
-		char input;
-		if (scanf("%c", &input))
-		{
-			if (input == 'v'){
-				pthread_t service_verify;
-				pthread_create(&service_verify, NULL, SERVICE_VERIFY, NULL);
-				pthread_join(service_verify, NULL);
-
-			}
-
-			if (input == 'w'){
-				pthread_t service_write;
-				pthread_create(&service_write, NULL, SERVICE_WRITE, NULL);
-				pthread_join(service_write, NULL);
-			}
-		}
-
+		// start timer
+		gettimeofday(&t1, NULL);
+	
+		//VGA_box(int x1, int y1, int x2, int y2, short pixel_color)
+		VGA_box(64, 0, 240, 50, blue); // blue box
+		VGA_box(250, 0, 425, 50, red); // red box
+		VGA_box(435, 0, 600, 50, green); // green box
+		
+		// cycle thru the colors
+		if (color_index++ == 11) color_index = 0;
+		
+		//void VGA_disc(int x, int y, int r, short pixel_color)
+		VGA_disc(disc_x, 100, 20, colors[color_index]);
+		disc_x += 35 ;
+		if (disc_x > 640) disc_x = 0;
+		
+		//void VGA_circle(int x, int y, int r, short pixel_color)
+		VGA_circle(320, 200, circle_x, colors[color_index]);
+		VGA_circle(320, 200, circle_x+1, colors[color_index]);
+		circle_x += 2 ;
+		if (circle_x > 99) circle_x = 0;
+		
+		//void VGA_rect(int x1, int y1, int x2, int y2, short pixel_color)
+		VGA_rect(10, 478, box_x, 478-box_x, rand()&0xffff);
+		box_x += 3 ;
+		if (box_x > 195) box_x = 10;
+		
+		//void VGA_line(int x1, int y1, int x2, int y2, short c)
+		VGA_line(210+(rand()&0x7f), 350+(rand()&0x7f), 210+(rand()&0x7f), 
+				350+(rand()&0x7f), colors[color_index]);
+		
+		// void VGA_Vline(int x1, int y1, int y2, short pixel_color)
+		VGA_Vline(Vline_x, 475, 475-(Vline_x>>2), rand()&0xffff);
+		Vline_x += 2 ;
+		if (Vline_x > 620) Vline_x = 350;
+		
+		//void VGA_Hline(int x1, int y1, int x2, short pixel_color)
+		VGA_Hline(400, Hline_y, 550, rand()&0xffff);
+		Hline_y += 2 ;
+		if (Hline_y > 400) Hline_y = 240;
+		
+		// stop timer
+		gettimeofday(&t2, NULL);
+		elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000000.0;      // sec to us
+		elapsedTime += (t2.tv_usec - t1.tv_usec) ;   // us 
+		sprintf(time_string, "T = %6.0f uSec  ", elapsedTime);
+		VGA_text (10, 4, time_string);
+		// set frame rate
+		//usleep(17000);
+		
 	} // end while(1)
-
-	pthread_join(thread_reset, NULL);
 } // end main
 
 /****************************************************************************************
@@ -953,4 +600,3 @@ void VGA_line(int x1, int y1, int x2, int y2, short c) {
 		e = e + ((int)dy<<1);
 	}
 }
-// BOTTOM

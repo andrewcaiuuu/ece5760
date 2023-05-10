@@ -3,14 +3,14 @@
 module bresenham (
     input clk, 
     input reset,
-    input [9:0] x0, y0, x1, y1,
-    output [9:0] x, y,
+    input [7:0] x0, y0, x1, y1,
+    output [7:0] x, y,
     output logic valid,
     output logic done
 );
 
-logic signed [9:0] reg_x, reg_y;
-logic signed [9:0] dx, dy, sx, sy, err, e2;
+logic signed [7:0] reg_x, reg_y;
+logic signed [7:0] dx, dy, sx, sy, err, e2;
 
 assign x = reg_x;
 assign y = reg_y;

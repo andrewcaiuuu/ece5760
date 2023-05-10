@@ -1,5 +1,6 @@
 // compile with gcc preprocessor.c helpers.o -o pre -O2 -lm
 // compile helper with gcc -c helpers.c -o helpers.o
+// compile with gcc thread_art.c -o out -O2 -lm -std=c99
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -13,7 +14,7 @@
 #define N_LINES 360
 #define LIGHTNESS_PENALTY 2 //defined in terms of right shifts
 #define DARKNESS 150
-#define TIME_SAVER 80 //defined as terms to actually consider
+#define TIME_SAVER 40 //defined as terms to actually consider
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif

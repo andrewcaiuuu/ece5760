@@ -373,12 +373,14 @@ HexDigit Digit2(HEX2, hex3_hex0[11:8]);
 HexDigit Digit3(HEX3, hex3_hex0[15:12]);
 
 // PIO signals
-wire [31:0] arm_data;
-wire arm_val;
-wire arm_rdy;
-wire [31:0] fpga_data;
-wire fpga_val;
-wire fpga_rdy;
+wire [31:0] arm_data; // arm output
+wire arm_val; // arm output
+wire arm_rdy; // arm output 
+wire arm_ack;
+wire fpga_ack;
+wire [31:0] fpga_data; // arm input
+wire fpga_val; // arm input
+wire fpga_rdy; // arm input
 
 
 // M10k memory clock
@@ -390,12 +392,12 @@ wire  [9:0] image_write_address [0:239];
 wire  [9:0] image_read_address  [0:239];
 wire  image_we                  [0:239];
 wire  [8:0] image_readout       [0:239];
-reg   [8:0] image_writein       [0:239];
+wire   [8:0] image_writein       [0:239];
 genvar i;
 generate
     for (i=0; i<240; i=i+1) begin: imageMemGen
         M10K_1000_8 mem(
-            .clk(M10k_pll),
+            .clk(CLOCK_50),
             .d(image_writein[i]),
             .write_address(image_write_address[i]),
             .read_address(image_read_address[i]),
@@ -406,54 +408,152 @@ generate
 endgenerate
 
 // Instantiate Weight memory
-wire  [9:0] weight_write_address [0:239];
-wire  [9:0] weight_read_address  [0:239];
-wire  weight_we                  [0:239];
-wire  [8:0] weight_readout       [0:239];
-reg   [8:0] weight_writein       [0:239];
-genvar j;
-generate
-    for (j=0; j<240; j=j+1) begin: weightMemGen
-        M10K_1000_4 mem(
-            .clk(M10k_pll),
-            .d(weight_writein[j]),
-            .write_address(weight_write_address[j]),
-            .read_address(weight_read_address[j]),
-            .we(weight_we[j]),
-            .q(weight_readout[j])
-        );
-    end
-endgenerate
+// wire  [9:0] weight_write_address [0:239];
+// wire  [9:0] weight_read_address  [0:239];
+// wire  weight_we                  [0:239];
+// wire  [8:0] weight_readout       [0:239];
+// wire   [8:0] weight_writein       [0:239];
+// genvar j;
+// generate
+//     for (j=0; j<240; j=j+1) begin: weightMemGen
+//         M10K_1000_4 mem(
+//             .clk(CLOCK_50),
+//             .d(weight_writein[j]),
+//             .write_address(weight_write_address[j]),
+//             .read_address(weight_read_address[j]),
+//             .we(weight_we[j]),
+//             .q(weight_readout[j])
+//         );
+//     end
+// endgenerate
+
+logic mr_fpga_ack, mr_fpga_val, mr_fpga_rdy;
+logic mw_fpga_ack, mw_fpga_val, mw_fpga_rdy;
+logic [31:0] mr_fpga_data, mw_fpga_data;
+
+
+
+reg mw_reset;
+wire mw_done, mw_we;
 
 wire [8:0] mw_d;
-wire [15:0] mw_which_mem;
-wire mw_reset;
-wire mw_done;
-wire mw_we
-assign image_writein[mw_which_mem] = mw_d;
-
+wire [9:0] mw_which_mem;
+wire [9:0] mw_addr;
+wire [31:0] mw_count;
 
 mem_writer m_w (
-	.clk(M10k_pll),
-	.arm_val(arm_val),
-	.arm_rdy(arm_rdy),
+	.clk(CLOCK_50),
+
 	.arm_data(arm_data),
+	.arm_val(arm_val),
+	.arm_ack(arm_ack),
 	.reset(mw_reset),
 
-	.fpga_val(fpga_val),
-	.fpga_rdy(fpga_rdy),
+	.fpga_ack(mw_fpga_ack),
+
 	.d(mw_d),
-	.we(mw_we)
+	.addr(mw_addr),
+	.we(mw_we),
+	.which_mem(mw_which_mem),
+
 	.done(mw_done),
-	which_mem(mw_which_mem)
+	.count(mw_count)
+);
+
+reg mr_reset;
+wire mr_done;
+
+wire [8:0] mr_image_data;
+wire [9:0] mr_addr;
+wire [9:0] mr_which_mem;
+wire [31:0] mr_count;
+mem_reader m_r (
+	.clk(CLOCK_50),
+
+	.arm_ack(arm_ack),
+	
+	.image_mem_data(mr_image_data),
+	.reset(mr_reset),
+
+	.fpga_val(mr_fpga_val),
+	.fpga_ack(mr_fpga_ack),
+	.fpga_data(mr_fpga_data),
+
+	.addr(mr_addr),
+	.which_mem(mr_which_mem),
+	.done(mr_done),
+	.count(mr_count)
 );
 
 
-logic [3:0] state = 0;
-always@(posedge M10k_pll) begin 
-	if (state == 0) begin 
-		if (mw_done) begin 
-			state <= 1; 
+// synthesize 240 comparators
+genvar k;
+generate
+  for (k = 0; k < 240; k=k+1) begin : gen_assignments
+    assign image_write_address[k] = (k == mw_which_mem) ? mw_addr : 0;
+    assign image_writein[k] = (k == mw_which_mem) ? mw_d : 0;
+    assign image_we[k] = (k == mw_which_mem) ? mw_we : 0;
+
+	assign image_read_address[k] = (k == mr_which_mem) ? mr_addr : 0;
+  end
+endgenerate
+
+assign mr_image_data = image_readout[mr_which_mem];
+
+// assign fpga_rdy = mw_fpga_rdy;
+// assign fpga_val = mr_fpga_val;
+// assign fpga_data = mr_fpga_data;
+
+// assign fpga_rdy = mr_fpga_rdy;
+// assign fpga_val = mr_fpga_val;
+// assign fpga_data = mr_fpga_data;
+
+assign LEDR = KEY[0] ? 10'd0 : 10'd1;
+// assign hex3_hex0 = 16'd2;
+assign pio_reset = ~KEY[0];
+reg [3:0] state;
+assign fpga_rdy =  (state < 5 ) ? mw_fpga_rdy : mr_fpga_rdy;
+assign fpga_val =  (state < 5 ) ? mw_fpga_val : mr_fpga_val;
+assign fpga_data = (state < 5 ) ? mw_fpga_data : mr_fpga_data;
+assign fpga_ack =  (state < 5 ) ? mw_fpga_ack : mr_fpga_ack;
+
+
+// assign hex3_hex0 = mr_count;
+
+assign hex3_hex0[3:0] = state;
+assign hex3_hex0[7:4] = mw_count[3:0];
+assign hex3_hex0[11:8] = mr_count[3:0];
+
+always@(posedge CLOCK_50) begin 
+	if (~KEY[0])  begin 
+		state <= 0;
+	end 
+	else if (state == 0) begin 
+		mw_reset <= 1;
+		mr_reset <= 1;
+		state <= 1;
+	end 
+	else if (state == 1) begin 
+		mw_reset <= 0;
+		state <= 2;
+	end 
+	else if (state == 2) begin 
+		state <= 2;
+		if (mw_done == 1) begin 
+			state <= 3;
+		end 
+	end 
+	else if (state == 3) begin //starting the verification
+		state <= 4;
+	end 
+	else if (state == 4) begin 
+		mr_reset <= 0;
+		state <= 5;
+	end 
+	else if (state == 5) begin 
+		state <= 5;
+		if (mr_done == 1) begin
+			state <= 6;
 		end 
 	end 
 end 
@@ -467,14 +567,21 @@ Computer_System The_System (
 	// FPGA Side
 	////////////////////////////////////
 
-	// PIO
-	.arm_data_external_connection			(arm_data),
-	.arm_val_external_connection			(arm_val),
-	.arm_rdy_external_connection			(arm_rdy),
+	// PLL
+	.m10k_pll_locked_export			(M10k_pll_locked),          //      m10k_pll_locked.export
+	.m10k_pll_outclk0_clk			(M10k_pll),            //     m10k_pll_outclk0.clk
 
-	.fpga_data_external_connection			(fpga_data),
-	.fpga_val_external_connection			(fpga_val),
-	.fpga_rdy_external_connection			(fpga_rdy),
+	// PIO
+	.arm_data_external_connection_export			(arm_data),
+	.arm_val_external_connection_export			    (arm_val),
+	.arm_rdy_external_connection_export			    (arm_rdy),
+	.arm_ack_external_connection_export	            (arm_ack),
+
+	.fpga_data_external_connection_export			(fpga_data),
+	.fpga_val_external_connection_export			(fpga_val),
+	.fpga_rdy_external_connection_export			(fpga_rdy),
+	.pio_reset_external_connection_export			(pio_reset),
+	.fpga_ack_external_connection_export	        (fpga_ack),
 
 	// Global signals
 	.system_pll_ref_clk_clk					(CLOCK_50),
