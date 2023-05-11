@@ -439,7 +439,7 @@ logic [9:0] sv_addr, sv_which;
 logic sv_we;
 logic [17:0] sv_image_mem_data, sv_image_mem_writeout;
 logic [31:0] sv_arm_data;
-logic [7:0] sv_debug_count;
+logic [31:0] sv_debug_count;
 
 solvers svs (
 	.clk(CLOCK_50),
@@ -517,19 +517,6 @@ mem_reader m_r (
 	.count(mr_count)
 );
 
-
-// synthesize 240 comparators
-genvar k;
-generate
-	for (k = 0; k < 240; k=k+1) begin : gen_assignments
-		assign image_write_address[k] = (state > 6) ? ( (k == sv_which) ? sv_addr : 0 ) : ( (k == mw_which_mem) ? mw_addr : 0);
-		assign image_writein[k] = (state > 6) ? ( (k == sv_which) ? sv_image_mem_writeout : 0 ) : ( (k == mw_which_mem) ? mw_d : 0);
-		assign image_we[k] = (state > 6) ? ( (k == sv_which) ? sv_we : 0 ) : ( (k == mw_which_mem) ? mw_we : 0 );
-
-		assign image_read_address[k] = (state > 6) ? ( (k == sv_which) ? sv_addr : 0) : ( (k == mr_which_mem) ? mr_addr : 0);
-	end
-endgenerate
-
 assign mr_image_data = image_readout[mr_which_mem];
 assign sv_image_mem_data = image_readout[sv_which];
 
@@ -543,21 +530,39 @@ assign sv_image_mem_data = image_readout[sv_which];
 
 assign LEDR[0] = KEY[0] ? 0 : 1;
 assign LEDR[1] = fpga_ack ? 1 : 0;
+assign LEDR[2] = sv_fpga_ack ? 1 : 0;
+assign LEDR[3] = sv_fpga_val ? 1 : 0;
+assign LEDR[4] = sv_debug_count[7] ? 1 : 0;
+assign LEDR[5] = sv_debug_count[6] ? 1 : 0;
+
 // assign hex3_hex0 = 16'd2;
 assign pio_reset = ~KEY[0];
 reg [3:0] state;
-assign fpga_rdy =  (state < 5 ) ? ( (state > 6 ) ? sv_fpga_rdy  : mw_fpga_rdy  ): mr_fpga_rdy;
-assign fpga_val =  (state < 5 ) ? ( (state > 6 ) ? sv_fpga_val  : mw_fpga_val  ): mr_fpga_val;
-assign fpga_data = (state < 5 ) ? ( (state > 6 ) ? sv_fpga_data : mw_fpga_data ): mr_fpga_data;
-assign fpga_ack =  (state < 5 ) ? ( (state > 6 ) ? sv_fpga_ack  : mw_fpga_ack  ): mr_fpga_ack;
+assign fpga_rdy =  (state < 5 ) ?  mw_fpga_rdy  : ( (state > 6 ) ? sv_fpga_rdy  : mr_fpga_rdy  ); 
+assign fpga_val =  (state < 5 ) ?  mw_fpga_val  : ( (state > 6 ) ? sv_fpga_val  : mr_fpga_val  );
+assign fpga_data = (state < 5 ) ?  mw_fpga_data : ( (state > 6 ) ? sv_fpga_data : mr_fpga_data );
+assign fpga_ack =  (state < 5 ) ?  mw_fpga_ack  : ( (state > 6 ) ? sv_fpga_ack  : mr_fpga_ack  );
 
+
+// synthesize 240 comparators
+genvar k;
+generate
+	for (k = 0; k < 240; k=k+1) begin : gen_assignments
+		assign image_write_address[k] = (state > 6) ? ( (k == sv_which) ? sv_addr : 0 ) : ( (k == mw_which_mem) ? mw_addr : 0);
+		assign image_writein[k] = (state > 6) ? ( (k == sv_which) ? sv_image_mem_writeout : 0 ) : ( (k == mw_which_mem) ? mw_d : 0);
+		assign image_we[k] = (state > 6) ? ( (k == sv_which) ? sv_we : 0 ) : ( (k == mw_which_mem) ? mw_we : 0 );
+
+		assign image_read_address[k] = (state > 6) ? ( (k == sv_which) ? sv_addr : 0) : ( (k == mr_which_mem) ? mr_addr : 0);
+	end
+endgenerate
 
 // assign hex3_hex0 = mr_count;
 
-assign hex3_hex0[3:0] = state;
+// assign hex3_hex0[3:0] = state;
 // assign hex3_hex0[7:4] = mw_count[3:0];
 // assign hex3_hex0[11:8] = mr_count[3:0];
-assign hex3_hex0[11:4] = sv_debug_count;
+assign hex3_hex0[3:0] = sv_debug_count[5:0];
+assign hex3_hex0[11:4] = sv_debug_count[31:24];
 
 
 // assign sv_arm_data = state > 6 ? arm_data : 0;

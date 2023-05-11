@@ -41,8 +41,9 @@ module testbench();
     //Instantiation of Device Under Test
     // hook up the sine wave generators
 
-    wire [9:0] testbench_xout;
-    wire [9:0] testbench_yout;
+    wire [31:0] testbench_xout;
+    wire [31:0] testbench_yout;
+    logic done;
     wire testbench_valid;
 
     logic ack = 0;
@@ -64,18 +65,50 @@ module testbench();
             ack <= 1;
         end 
     end 
-
 bresenham DUT   (.clk(clk_50), 
                 .reset(reset),
-                .x0(9'd0),
-                .y0(9'd0),
-                .x1(9'd100),
-                .y1(9'd100),
+                .start(1),
+                .x0(32'd120),
+                .y0(32'd70),
+                .x1(32'd0),
+                .y1(32'd10),
+                .plot(testbench_valid),
                 .x(testbench_xout),
                 .y(testbench_yout),
-                .valid(testbench_valid),
-                .ack(ack)
+                .done(done),
+                .enable(ack)
                 );
     
 endmodule
+
+// bresenham DUT   (.clk(clk_50), 
+//                 .reset(reset),
+//                 .x0(32'd70),
+//                 .y0(32'd70),
+//                 .x1(32'd150),
+//                 .y1(32'd255),
+//                 .x(testbench_xout),
+//                 .y(testbench_yout),
+//                 .valid(testbench_valid),
+//                 .done(done),
+//                 .ack(1)
+//                 );
+    
+// endmodule
+
+
+// bresenham DUT   (.clk(clk_50), 
+//                 .reset(reset),
+//                 .x0(11'd70),
+//                 .y0(11'd70),
+//                 .x1(11'd71),
+//                 .y1(11'd0),
+//                 .x(testbench_xout),
+//                 .y(testbench_yout),
+//                 .valid(testbench_valid),
+//                 .done(done),
+//                 .ack(1)
+//                 );
+    
+// endmodule
 

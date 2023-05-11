@@ -360,6 +360,7 @@ void *SERVICE_WRITE()
 // TOP OF SERVICE_CALC
 void *SERVICE_CALC() 
 {
+	srand(42);
 	int *ah_monochrome = malloc((ROWS * COLS) * sizeof(int));
 	read_array(ah_monochrome, "ah_monochrome.txt");
 	*(arm_val_ptr) = 0; // sanity check
@@ -369,6 +370,7 @@ void *SERVICE_CALC()
 	generate_hooks_with_size(xy);
 
 	int prev_edge = rand() % N_HOOKS;
+
 	for (int i = 0; i < N_LINES; i++){
 		int starting_edge = prev_edge;
 		int *chosen = (int *)malloc(SPACE_SAVER * sizeof(int));
@@ -379,25 +381,32 @@ void *SERVICE_CALC()
 		// FIRST TRANSFER THE STARTING POINT===============================
 		*(arm_val_ptr) = 0;
 
-		int is_last_line = i == N_LINES - 1;
+		// int is_last_line = i == N_LINES - 1;
 		uint32_t combined;
 		uint16_t x = (uint16_t)xy[starting_edge].x;
 		uint16_t y = (uint16_t)xy[starting_edge].y;
-		combined = ((uint32_t)is_last_line << 31) | (( (uint32_t) y << 16) | x); // bit 31 is is_last, bits 30-16 is y, bits 15-0 is x
+		// printf("starting x: %d, starting y: %d\n", x, y);
+
+		// uint16_t x = 0;
+		// uint16_t y = 0;
+
+		combined = ((uint32_t) y << 9 ) | x; 
+		// combined = ((uint32_t)is_last_line << 31) | (( (uint32_t) y << 16) | x); // bit 31 is is_last, bits 30-16 is y, bits 15-0 is x
 		*(fpga_data_ptr) = combined;
 
 		*(arm_val_ptr) = 1; // try to transfer
 		printf(" HI IM HERE\n");
 		while (!*(fpga_ack_ptr))
 		{ // wait for fpga to ack
-			printf(" FUCKING SPINNING\n");
+			// printf(" FUCKING SPINNING\n");
 		}
 		*(arm_val_ptr) = 0; // clear our val
-
+		printf("MADE IT OUT\n");
 		// once acked, send clear flag, through the form of return ack
 		*(arm_ack_ptr) = 1;
 		while (*(fpga_ack_ptr))
 		{ // wait for fpga to clear ack
+			// printf("STUCK HERE\n");
 		}
 		*(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
 		// FIRST TRANSFER THE STARTING POINT===============================
@@ -407,17 +416,21 @@ void *SERVICE_CALC()
 			int ending_edge = chosen[j];
 
 			uint32_t is_last_chosen = j == SPACE_SAVER - 1;
-			uint32_t combined_last = ((uint32_t)is_last_line << 31) | ((uint32_t)is_last_chosen << 15); 
+			// uint32_t combined_last = ((uint32_t)is_last_line << 31) | ((uint32_t)is_last_chosen << 15); 
 
 			uint32_t combined;
 			uint16_t x = (uint16_t)xy[ending_edge].x;
 			uint16_t y = (uint16_t)xy[ending_edge].y;
-
-			combined = combined_last | (( (uint32_t) y << 16) | x); // bit 31 is is_last, bits 30-16 is y, bit 15 is is_last, bits 14-0 is x
+			// printf("ending x: %d, ending y: %d\n", x, y);
+			// uint16_t x = 100;
+			// uint16_t y = 100;
+			combined = (((uint32_t)y << 9) | x ) | (is_last_chosen << 31);
+			// combined = combined_last | (( (uint32_t) y << 16) | x); // bit 31 is is_last, bits 30-16 is y, bit 15 is is_last, bits 14-0 is x
 			*(fpga_data_ptr) = combined;
 			*(arm_val_ptr) = 1; // try to transfer
 			while (!*(fpga_ack_ptr))
 			{ // wait for fpga to ack
+				printf("STUCK HERE1\n");
 			}
 			*(arm_val_ptr) = 0; // clear our val
 
@@ -425,32 +438,54 @@ void *SERVICE_CALC()
 			*(arm_ack_ptr) = 1;
 			while (*(fpga_ack_ptr))
 			{ // wait for fpga to clear ack
+				printf("STUCK HERE2\n");
 			}
 			*(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
 		}
 
 		// values have been transferred, now wait for fpga to calculate
-		
 
+		*(arm_ack_ptr) = 0; // sanity check
+		// printf("fpga_val_ptr: %d\n", *(fpga_val_ptr));
 		int *norms = (int *)malloc(SPACE_SAVER * sizeof(int));
 		int *reductions = (int *)malloc(SPACE_SAVER * sizeof(int));
 		for (int k = 0; k < SPACE_SAVER; k++){
 			*(arm_ack_ptr) = 0; // sanity check
 			while (!*(fpga_val_ptr))
 			{ // wait for valid data from FPGA
+				// printf("STUCK HERE3\n");
 			}
 			int norm = *(fpga_data_ptr) >> 16;
 			int reduction = *(fpga_data_ptr) & 0xFFFF;
+			// printf(" got norm: %d, reduction: %d \n", norm, reduction);
 			norms[k] = norm;
 			reductions[k] = reduction;
 
 			*(arm_ack_ptr) = 1; // ack the data
 			while (!*(fpga_ack_ptr))
 			{ // wait for FPGA to read ack
+				printf("STUCK HERE4\n");
 			}
 			*(arm_ack_ptr) = 0; // reset ack
 			while (*(fpga_ack_ptr))
 			{ // wait for FPGA to reset ack
+				printf("STUCK HERE5\n");
+			}
+		}
+		for (int kk = 0; kk < SPACE_SAVER; kk++){
+			printf("norms[%d]: %d\n", kk, norms[kk]);
+			printf("reductions[%d]: %d\n", kk, reductions[kk]);
+		}
+
+		// get the best value
+		int best_reduction = INT_MIN;
+		int chosen_edge = -1;
+		for (int l = 0; l < SPACE_SAVER; l++){
+			float true = (float) reductions[l] / (float) norms[l];
+			printf("(true: %f %d %d %d %d\n", true, xy[starting_edge].x, xy[starting_edge].y, xy[chosen[l]].x, xy[chosen[l]].y);
+			if (true > best_reduction){
+				best_reduction = true;
+				chosen_edge = l;
 			}
 		}
 
@@ -458,20 +493,12 @@ void *SERVICE_CALC()
 		free(reductions);
 		free(chosen);
 
-		// get the best value
-		int best_reduction = INT_MIN;
-		int chosen_edge = -1;
-		for (int l = 0; l < SPACE_SAVER; l++){
-			int true = reductions[l] / norms[l];
-			if (true > best_reduction){
-				best_reduction = true;
-				chosen_edge = l;
-			}
-		}
 		// add the chosen edge to the list
 		line_list[i * 2] = xy[starting_edge];
 		line_list[i * 2 + 1] = xy[chosen_edge];
 		prev_edge = chosen_edge;
+
+		printf("(%d %d %d %d\n", xy[starting_edge].x, xy[starting_edge].y, xy[chosen_edge].x, xy[chosen_edge].y);
 
 		// update the values and write values back to FPGA
 		*(arm_val_ptr) = 0; // sanity check
@@ -481,6 +508,8 @@ void *SERVICE_CALC()
 
 		through_pixels(p0, p1, pixels);
 		struct Node * current = pixels->head;
+
+		printf("HI\n");
 		while (current != NULL) {
 			struct Node *temp = current;
 			*(arm_val_ptr) = 0; // sanity check
@@ -509,6 +538,7 @@ void *SERVICE_CALC()
 			*(arm_val_ptr) = 1; // try to transfer
 			while (!*(fpga_ack_ptr))
 			{ // wait for fpga to ack
+				// printf("STUCK HERE6\n");
 			}
 			*(arm_val_ptr) = 0; // clear our val
 
@@ -516,6 +546,7 @@ void *SERVICE_CALC()
 			*(arm_ack_ptr) = 1;
 			while (*(fpga_ack_ptr))
 			{ // wait for fpga to clear ack
+				// printf("STUCK HERE7\n");
 			}
 			*(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
 			current = current->next;

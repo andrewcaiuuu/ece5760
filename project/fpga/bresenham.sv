@@ -1,61 +1,64 @@
-
-
-module bresenham (
-    input clk, 
-    input reset,
-    input [8:0] x0, y0, x1, y1,
-    output [8:0] x, y,
-    output logic valid,
-    output logic done,
-    input logic ack // add this line
+module bresenham(input logic clk, reset,
+input logic start,
+input logic [10:0] x0, y0, x1, y1,
+input logic enable,
+output logic plot,
+output logic [10:0] x, y,
+output logic done
 );
 
-logic signed [8:0] reg_x, reg_y;
-logic signed [8:0] dx, dy, sx, sy, err, e2;
-
-assign x = reg_x;
-assign y = reg_y;
-
-always_comb begin 
-    dx = (x0 < x1) ? (x1 - x0) : (x0 - x1);
-    dy = (y0 < y1) ? (y1 - y0) : (y0 - y1);
-    e2 = err << 1;
-end 
-
+logic signed [11:0] dx, dy, err, e2;
+logic right, down;
+typedef enum logic [3:0] {IDLE, RUN, DONE} state_t;
+state_t state;
 always_ff @(posedge clk) begin
-    if (reset) begin 
-        valid <= 0;
-        done <= 0;
-    end
-    else if ( ~valid && ~done) begin 
-        reg_x <= x0;
-        reg_y <= y0;
-        sx <= (x0 < x1) ? 1: -1;
-        sy <= (y0 < y1) ? 1: -1;
-        err <= dx - dy;
-        valid <= 1'b1;
-    end else if ( valid && ack ) begin 
-        if ( e2 > -dy ) begin 
-            err <= err - dy;
-            reg_x <= reg_x + sx;
+    done <= 0;
+    plot <= 0;
+    if (reset) state <= IDLE;
+    else case (state)
+        IDLE:
+        if (start) begin
+            dx = x1 - x0; // Blocking!
+            right = dx >= 0;
+            if (~right) dx = -dx;
+            dy = y1 - y0;
+            down = dy >= 0;
+            if (down) dy = -dy;
+            err = dx + dy;
+            x <= x0;
+            y <= y0;
+            plot <= 1;
+            state <= RUN;
         end
-        if ( e2 < dx ) begin 
-            err <= err + dx;
-            reg_y <= reg_y + sy;
+        RUN:
+            if (enable) begin
+                if (x == x1 && y == y1) begin
+                    done <= 1;
+                    state <= DONE;
+                end else begin
+                    plot <= 1;
+                    e2 = err << 1;
+                    if (e2 > dy) begin
+                        err += dy;
+                        if (right) x <= x + 10'd 1;
+                        else x <= x - 10'd 1;
+                    end
+                    if (e2 < dx) begin
+                        err += dx;
+                    if (down) y <= y + 10'd 1;
+                    else y <= y - 10'd 1;
+                end
+            end
         end
-        else begin 
-            err <= err - dy + dx;
-            reg_x <= reg_x + sx;
-            reg_y <= reg_y + sy;
-        end 
-        if (reg_x == x1 && reg_y == y1) begin 
-            reg_x <= reg_x;
-            reg_y <= reg_y;
-            valid <= 0;
+
+        DONE: begin 
+            state <= DONE;
             done <= 1;
         end 
-    end 
-end
+        default:
+            state <= IDLE;
+        endcase
+    end
 
 
 endmodule

@@ -16,7 +16,7 @@ module solvers(
     output logic [9:0] which_mem,
     output logic we,
     output logic [19:0] image_mem_writeout,
-    output logic [7:0] debug_count
+    output logic [31:0] debug_count
 );
 
 logic [8:0] x0, y0;
@@ -27,7 +27,9 @@ logic [8:0] xs [0:39];
 logic [8:0] ys [0:39];
 logic [39:0] valids;
 logic [39:0] dones;
-logic ack_bs;
+logic combined_dones;
+assign combined_dones = &dones;
+logic [39:0] enable_bs;
 
 
 // logic signed [7:0] with [0:89];
@@ -59,15 +61,16 @@ generate
         bresenham br(
             .clk(clk),
             .reset(br_reset),
+            .start('1),
             .x0(x0),
             .y0(y0),
             .x1(x1s[i]),
             .y1(y1s[i]),
+            .enable(enable_bs[i]),
             .x(xs[i]),
             .y(ys[i]),
-            .valid(valids[i]),
-            .done(dones[i]),
-            .ack(ack_bs)
+            .plot(valids[i]),
+            .done(dones[i])
         );
     end
 endgenerate
@@ -96,24 +99,39 @@ logic group_first;
 logic is_last;
 
 logic have_valid;
-integer rr, ii, jj, rrr;
+integer rr, ii, jj, rrr, kk;
 
-assign debug_count = state;
+assign debug_count[5:0] = state;
+assign debug_count[31:24] = read_index;
+
+logic [10:0] want;
+logic [39:0] hit;
+logic direction;
+
+logic hit_reduction;
+assign hit_reduction = |hit;
 
 always @(posedge clk) begin 
     if (reset) begin 
+        debug_count[7] <= 0;
+        debug_count[6] <= 0;
         we <= 0;
         which_mem <= 0;
         state <= 0;
         read_index <= 0;
         group_first <= 1;
-        ack_bs <= 0;
+        want <= 0;
+        hit <= 0;
+        fpga_val <= 0;
+        fpga_ack <= 0;
+        
         read_counter <= 0;
 
         // generate:
         for (rr=0; rr<40; rr=rr+1) begin : reset_loop
             total_reductions[rr] <= 0;
             total_norms[rr] <= 0;
+            enable_bs[rr] <= 1;
         end
         // endgenerate
     end 
@@ -126,10 +144,17 @@ always @(posedge clk) begin
             group_last <= arm_data[31];
             group_first <= 0;
             if (group_first) begin 
+                // want <= arm_data[8:0]; // set want to x0
                 x0 <= arm_data[8:0];
                 y0 <= arm_data[17:9];
             end 
             else begin 
+                // if (arm_data[8:0] < want) begin 
+                //     direction <= 1;
+                // end
+                // else begin 
+                //     direction <= 0;
+                // end 
                 x1s[read_index] <= arm_data[8:0];
                 y1s[read_index] <= arm_data[17:9];
                 read_index <= read_index + 1;
@@ -154,7 +179,9 @@ always @(posedge clk) begin
 
     else if (state == 3) begin 
         if ( group_last ) begin 
+            debug_count[7] <= 1;
             state <= 4;
+            br_reset <= 1;
         end 
         else begin 
             state <= 0;
@@ -162,100 +189,148 @@ always @(posedge clk) begin
     end 
 
     else if (state == 4) begin // RESET THE BRESENHAM SOLVERS, START COMPUTATIONS
-        br_reset <= 1;
+        br_reset <= 0; //drop out of reset
         state <= 5;
     end 
 
     else if (state == 5) begin 
-        br_reset <= 0;
+        // br_reset <= 0;
         state <= 6;
     end 
-    else if (state == 6) begin // HAVE VALID BRESENHAM OUTPUT
+    else if (state == 6) begin // BRESENHAM SOLVERS RUNNING
+        // ack_bs <= 0;
+        // state <= 10;
+        // if (combined_dones) begin // if all are done, move on
+        //     debug_count[6] <= 1;
+        //     state <= 10;
+        // end 
+        // else begin 
+        //     state <= 7;
+        // end 
         state <= 7;
         for (ii=0; ii<40; ii=ii+1) begin // set address as first valid bresenham output
-            if (valids[ii]) begin 
-                state <= 9;
-                image_mem_addr <= xs[ii];
-                which_mem <= ys[ii>>1];
-            end 
+            enable_bs[ii] <= 0; // disable all bresenhams
+            // if (valids[ii]) begin 
+            //     if (want == xs[ii]) begin 
+            //         hit[ii] <= 1;
+            //         image_mem_addr <= xs[ii];
+            //         which_mem <= ys[ii>>1];
+            //     end 
+            // end 
         end
+        image_mem_addr <= xs[want];
+        if (dones[want]) begin 
+            state <= 6;
+            want <= want + 1;
+            if (want == 39) begin 
+                state <= 10;
+            end
+        end
+        // enable_bs[want]; // enable just want
+        
     end 
     else if (state == 7) begin // memory latency
         state <= 8;
-        ack_bs <= 1; 
+        // ack_bs <= 0; 
     end 
-    else if (state == 8) begin // this cycle ack_bs is 1, next cycle we will have next valid
+    else if (state == 8) begin // memory latency
+        state <= 9;
+        enable_bs[want] <= 1; // enable just want
+        // for (kk=0; kk<40; kk=kk+1) begin // only enable the ones that wre logged this cycle
+        //     if (hit[kk]) begin 
+        //         enable_bs[kk] <= 1;
+        //     end 
+        // end
+    end 
+    else if (state == 9) begin // this cycle bs_enable is 1, next cycle we will have next valid
+        // if (want == 40) begin 
+        //     state <= 10;
+        // end 
+        // else begin 
+        //     state <= 6;
+        // end 
         state <= 6;
-        ack_bs <= 0;
-        for (jj=0; jj<40; jj=jj+1) begin 
-            if (valids[jj]) begin 
-                total_norms[jj] <= total_norms[jj] + 1;
-                total_reductions[jj] <= total_reductions[jj] + reductions[jj];
-            end 
-        end
+        enable_bs[want] <= 0; // disable just want
+        total_norms[want] <= total_norms[want] + 1;
+        total_reductions[want] <= total_reductions[want] + reductions[want];
+        // for (jj=0; jj<40; jj=jj+1) begin 
+        //     if (hit[jj] == 1) begin 
+        //         // debug_count[6] <= 1;
+        //         total_norms[jj] <= total_norms[jj] + 1;
+        //         total_reductions[jj] <= total_reductions[jj] + reductions[jj];
+        //     end 
+        //     hit[jj] <= 0; // reset hit
+        // end
     end 
-    else if (state == 9) begin // nothing was valid, send values to arm
-        state <= 10;
+    else if (state == 10) begin // nothing was valid, send values to arm
+        state <= 11;
         fpga_val <= 1;
+        fpga_ack <= 0;
         fpga_data <= {total_norms[read_counter], total_reductions[read_counter]};
     end 
-    else if (state == 10) begin 
-        state <= 10;
+    else if (state == 11) begin 
+        state <= 11;
         if (arm_ack) begin 
-            state <= 11;
+            state <= 12;
             fpga_val <= 0;
             fpga_ack <= 1;
         end 
     end 
-    else if (state == 11) begin 
-        state <= 11;
+    else if (state == 12) begin 
+        state <= 12;
         if (~arm_ack) begin 
-            state <= 12;
+            state <= 13;
             fpga_ack <= 0;
         end
     end 
-    else if (state == 12) begin 
+    else if (state == 13) begin 
         read_counter <= read_counter + 1;
-        state <= 9;
+        state <= 10;
         if (read_counter == 39) begin // done writing everything to arm
-            state <= 13;
+            state <= 14;
         end 
     end  
-    else if (state == 13) begin // read write requests from arm
-        state <= 13;
+    else if (state == 14) begin // read write requests from arm
+        state <= 14;
         if (arm_val) begin 
             we <=  1;
             image_mem_writeout <= arm_data[19:0];
             image_mem_addr <= arm_data2[15:0];
             which_mem <= arm_data2[31:16];
-            state <= 14;
+            state <= 15;
             is_last <= arm_data[31];
             fpga_ack <= 1;
         end 
     end 
-    else if (state == 14) begin 
-        state <= 14;
+    else if (state == 15) begin 
+        state <= 15;
         if (arm_ack) begin 
-            state <= 15;
+            state <= 16;
             fpga_ack <= 0;
         end
     end 
-    else if (state == 15) begin 
-        state <= 15;
+    else if (state == 16) begin 
+        state <= 16;
         if (~arm_ack) begin 
-            state <= 16;
+            state <= 17;
         end
     end 
-    else if (state == 16) begin 
+    else if (state == 17) begin 
         if ( is_last ) begin 
+
+            fpga_val <= 0;
+            fpga_ack <= 0;
+            debug_count[7] <= 0;
+            debug_count[6] <= 0;
             we <= 0;
             which_mem <= 0;
             state <= 0;
             read_index <= 0;
             group_first <= 1;
-            ack_bs <= 0;
+            want <= 0;
+            hit <= 0;
+            
             read_counter <= 0;
-            // integer rrr;
             for (rrr=0; rrr<40; rrr=rrr+1) begin 
                 total_reductions[rrr] <= 0;
                 total_norms[rrr] <= 0;
