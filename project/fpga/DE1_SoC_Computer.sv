@@ -374,6 +374,7 @@ HexDigit Digit3(HEX3, hex3_hex0[15:12]);
 
 // PIO signals
 wire [31:0] arm_data; // arm output
+wire [31:0] arm_data2; // arm output
 wire arm_val; // arm output
 wire arm_rdy; // arm output 
 wire arm_ack;
@@ -391,8 +392,8 @@ wire 					M10k_pll_locked ;
 wire  [9:0] image_write_address [0:239];
 wire  [9:0] image_read_address  [0:239];
 wire  image_we                  [0:239];
-wire  [17:0] image_readout       [0:239];
-wire   [17:0] image_writein       [0:239];
+wire  [19:0] image_readout       [0:239];
+wire   [19:0] image_writein       [0:239];
 genvar i;
 generate
     for (i=0; i<240; i=i+1) begin: imageMemGen
@@ -411,8 +412,8 @@ endgenerate
 // wire  [9:0] weight_write_address [0:239];
 // wire  [9:0] weight_read_address  [0:239];
 // wire  weight_we                  [0:239];
-// wire  [8:0] weight_readout       [0:239];
-// wire   [8:0] weight_writein       [0:239];
+// wire  [7:0] weight_readout       [0:239];
+// wire   [7:0] weight_writein       [0:239];
 // genvar j;
 // generate
 //     for (j=0; j<240; j=j+1) begin: weightMemGen
@@ -429,17 +430,48 @@ endgenerate
 
 logic mr_fpga_ack, mr_fpga_val, mr_fpga_rdy;
 logic mw_fpga_ack, mw_fpga_val, mw_fpga_rdy;
-logic [31:0] mr_fpga_data, mw_fpga_data;
+logic sv_fpga_ack, sv_fpga_val, sv_fpga_rdy;
+logic [31:0] mr_fpga_data, mw_fpga_data, sv_fpga_data;
 
+
+logic sv_reset;
+logic [9:0] sv_addr, sv_which;
+logic sv_we;
+logic [17:0] sv_image_mem_data, sv_image_mem_writeout;
+logic [31:0] sv_arm_data;
+logic [7:0] sv_debug_count;
+
+solvers svs (
+	.clk(CLOCK_50),
+	.reset(sv_reset),
+
+	.arm_val(arm_val),
+	.arm_ack(arm_ack),
+	.arm_data(arm_data),
+	.arm_data2(arm_data2),
+
+	.image_mem_data(sv_image_mem_data),
+
+	.fpga_val(sv_fpga_val),
+	.fpga_ack(sv_fpga_ack),
+	.fpga_data(sv_fpga_data),
+
+	.image_mem_addr(sv_addr),
+	.which_mem(sv_which),
+	.we(sv_we),
+	.image_mem_writeout(sv_image_mem_writeout),
+	.debug_count(sv_debug_count)
+);
 
 
 reg mw_reset;
 wire mw_done, mw_we;
 
-wire [17:0] mw_d;
+wire [19:0] mw_d;
 wire [9:0] mw_which_mem;
 wire [9:0] mw_addr;
 wire [31:0] mw_count;
+logic [31:0] mw_arm_data;
 
 mem_writer m_w (
 	.clk(CLOCK_50),
@@ -463,7 +495,7 @@ mem_writer m_w (
 reg mr_reset;
 wire mr_done;
 
-wire [17:0] mr_image_data;
+wire [19:0] mr_image_data;
 wire [9:0] mr_addr;
 wire [9:0] mr_which_mem;
 wire [31:0] mr_count;
@@ -490,15 +522,16 @@ mem_reader m_r (
 genvar k;
 generate
 	for (k = 0; k < 240; k=k+1) begin : gen_assignments
-		assign image_write_address[k] = (k == mw_which_mem) ? mw_addr : 0;
-		assign image_writein[k] = (k == mw_which_mem) ? mw_d : 0;
-		assign image_we[k] = (k == mw_which_mem) ? mw_we : 0;
+		assign image_write_address[k] = (state > 6) ? ( (k == sv_which) ? sv_addr : 0 ) : ( (k == mw_which_mem) ? mw_addr : 0);
+		assign image_writein[k] = (state > 6) ? ( (k == sv_which) ? sv_image_mem_writeout : 0 ) : ( (k == mw_which_mem) ? mw_d : 0);
+		assign image_we[k] = (state > 6) ? ( (k == sv_which) ? sv_we : 0 ) : ( (k == mw_which_mem) ? mw_we : 0 );
 
-		assign image_read_address[k] = (k == mr_which_mem) ? mr_addr : 0;
+		assign image_read_address[k] = (state > 6) ? ( (k == sv_which) ? sv_addr : 0) : ( (k == mr_which_mem) ? mr_addr : 0);
 	end
 endgenerate
 
 assign mr_image_data = image_readout[mr_which_mem];
+assign sv_image_mem_data = image_readout[sv_which];
 
 // assign fpga_rdy = mw_fpga_rdy;
 // assign fpga_val = mr_fpga_val;
@@ -508,27 +541,34 @@ assign mr_image_data = image_readout[mr_which_mem];
 // assign fpga_val = mr_fpga_val;
 // assign fpga_data = mr_fpga_data;
 
-assign LEDR = KEY[0] ? 10'd0 : 10'd1;
+assign LEDR[0] = KEY[0] ? 0 : 1;
+assign LEDR[1] = fpga_ack ? 1 : 0;
 // assign hex3_hex0 = 16'd2;
 assign pio_reset = ~KEY[0];
 reg [3:0] state;
-assign fpga_rdy =  (state < 5 ) ? mw_fpga_rdy : mr_fpga_rdy;
-assign fpga_val =  (state < 5 ) ? mw_fpga_val : mr_fpga_val;
-assign fpga_data = (state < 5 ) ? mw_fpga_data : mr_fpga_data;
-assign fpga_ack =  (state < 5 ) ? mw_fpga_ack : mr_fpga_ack;
+assign fpga_rdy =  (state < 5 ) ? ( (state > 6 ) ? sv_fpga_rdy  : mw_fpga_rdy  ): mr_fpga_rdy;
+assign fpga_val =  (state < 5 ) ? ( (state > 6 ) ? sv_fpga_val  : mw_fpga_val  ): mr_fpga_val;
+assign fpga_data = (state < 5 ) ? ( (state > 6 ) ? sv_fpga_data : mw_fpga_data ): mr_fpga_data;
+assign fpga_ack =  (state < 5 ) ? ( (state > 6 ) ? sv_fpga_ack  : mw_fpga_ack  ): mr_fpga_ack;
 
 
 // assign hex3_hex0 = mr_count;
 
 assign hex3_hex0[3:0] = state;
-assign hex3_hex0[7:4] = mw_count[3:0];
-assign hex3_hex0[11:8] = mr_count[3:0];
+// assign hex3_hex0[7:4] = mw_count[3:0];
+// assign hex3_hex0[11:8] = mr_count[3:0];
+assign hex3_hex0[11:4] = sv_debug_count;
+
+
+// assign sv_arm_data = state > 6 ? arm_data : 0;
+// assign mw_arm_data = state <= 6 ? arm_data : 0;
 
 always@(posedge CLOCK_50) begin 
 	if (~KEY[0])  begin 
 		state <= 0;
 	end 
 	else if (state == 0) begin 
+		sv_reset <= 1;
 		mw_reset <= 1;
 		mr_reset <= 1;
 		state <= 1;
@@ -556,6 +596,15 @@ always@(posedge CLOCK_50) begin
 			state <= 6;
 		end 
 	end 
+	else if (state == 6) begin //starting the solvers
+		mr_reset <= 1;
+		mw_reset <= 1;
+		sv_reset <= 0;
+		state <= 7;
+	end
+	else if (state == 7) begin //let solvers work
+		state <= 7;
+	end 
 end 
 
 //=======================================================
@@ -573,6 +622,7 @@ Computer_System The_System (
 
 	// PIO
 	.arm_data_external_connection_export			(arm_data),
+	.arm_data2_external_connection_export			(arm_data2),
 	.arm_val_external_connection_export			    (arm_val),
 	.arm_rdy_external_connection_export			    (arm_rdy),
 	.arm_ack_external_connection_export	            (arm_ack),
@@ -724,14 +774,14 @@ Computer_System The_System (
 endmodule
 
 module M10K_1000_18( 
-    output reg [17:0] q,
-    input [17:0] d,
+    output reg [19:0] q,
+    input [19:0] d,
     input [9:0] write_address, read_address,
     input we, clk
 );
 	 // force M10K ram style
 	 // 480 words of 18 bits representing 2 rows of 480 pixels, MSB is the second row
-    reg [17:0] mem [479:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
+    reg [19:0] mem [479:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
 	 
     always @ (posedge clk) begin
         if (we) begin
@@ -741,15 +791,15 @@ module M10K_1000_18(
     end
 endmodule
 
-// module M10K_1000_4( 
-//     output reg [3:0] q,
-//     input [3:0] d,
+// module M10K_1000_8( 
+//     output reg [7:0] q,
+//     input [7:0] d,
 //     input [9:0] write_address, read_address,
 //     input we, clk
 // );
 // 	 // force M10K ram style
 // 	 // 960 words of 8 bits representing 2 rows of 480 pixels
-//     reg [3:0] mem [959:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
+//     reg [7:0] mem [959:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
 	 
 //     always @ (posedge clk) begin
 //         if (we) begin

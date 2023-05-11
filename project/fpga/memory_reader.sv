@@ -8,7 +8,7 @@ module mem_reader( // FPGA ACTING AS PRODUCER
     // arm interface
     input arm_ack,
 
-    input [17:0] image_mem_data,
+    input [19:0] image_mem_data,
     input reset,
 
     output logic fpga_val,

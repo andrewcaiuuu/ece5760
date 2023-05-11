@@ -46,6 +46,7 @@
 
 #define ARM_ACK_BASE     0x00000070
 #define FPGA_ACK_BASE    0x00000080
+#define ARM_DATA2_BASE   0x00000090
 
 // IMAGE CONSTANTS
 #define WHEEL_PIXEL_SIZE 480
@@ -59,9 +60,14 @@
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+#ifndef INT_MIN
+#define INT_MIN -2147483648
+#endif
+#define DARKNESS 150
 
 // PIO POINTERS
 volatile unsigned int * arm_data_ptr  =  NULL;
+volatile unsigned int * arm_data2_ptr = NULL;
 volatile unsigned int * arm_val_ptr   =  NULL;
 volatile unsigned int * arm_rdy_ptr   =  NULL;
 volatile unsigned int * fpga_data_ptr =  NULL;
@@ -128,6 +134,55 @@ void append(struct LinkedList *list, struct Tuple data) {
 	{
 		list->tail->next = new_node;
 		list->tail = new_node;
+	}
+}
+
+void through_pixels(struct Tuple p0, struct Tuple p1, struct LinkedList *pixels)
+{
+	int x0 = p0.x;
+	int y0 = p0.y;
+	int x1 = p1.x;
+	int y1 = p1.y;
+	int dx = abs(x1 - x0);
+	int dy = abs(y1 - y0);
+
+	int sx = (x0 < x1) ? 1 : -1;
+	int sy = (y0 < y1) ? 1 : -1;
+
+	int err = dx - dy;
+
+	while (1)
+	{
+		struct Tuple point;
+		point.x = x0;
+		point.y = y0;
+		append(pixels, point);
+
+		if (x0 == x1 && y0 == y1)
+		{
+			return;
+		}
+
+		int e2 = 2 * err;
+
+		if (e2 > -dy)
+		{
+			err -= dy;
+			x0 += sx;
+		}
+
+		if (e2 < dx)
+		{
+			err += dx;
+			y0 += sy;
+		}
+		else if (e2 == dx)
+		{ // Handle cases with slope 1 or -1
+			err -= dy;
+			x0 += sx;
+			err += dx;
+			y0 += sy;
+		}
 	}
 }
 
@@ -220,6 +275,7 @@ void *RESET()
 			*(arm_val_ptr) = 0;
 			*(arm_rdy_ptr) = 0;
 			*(arm_data_ptr) = 0;
+			*(arm_data2_ptr) = 0;
 			*(arm_ack_ptr) = 0;
 			// printf("RESET HIT\n");
 		}
@@ -281,7 +337,7 @@ void *SERVICE_WRITE()
 			uint32_t combined;
 			combined = (((uint32_t)cur_bot << 10) | cur_top ) | is_last;
 			// printf("is last %d\n", is_last);
-			*(fpga_data_ptr) = combined;
+			*(arm_data_ptr) = combined;
 			count++;
 
 
@@ -301,123 +357,205 @@ void *SERVICE_WRITE()
 	free(ah_monochrome);
 }
 
-// void *SERVICE_CALC()
-// {
-// 	*(arm_val_ptr) = 0; // sanity check
-// 	*(arm_ack_ptr) = 0; // sanity check
-// 	struct Tuple *line_list = (struct Tuple *)malloc(N_LINES * sizeof(struct Tuple) * 2);
-// 	struct Tuple *xy = (struct Tuple *)malloc(N_HOOKS * sizeof(struct Tuple));
-// 	generate_hooks_with_size(xy);
+// TOP OF SERVICE_CALC
+void *SERVICE_CALC() 
+{
+	int *ah_monochrome = malloc((ROWS * COLS) * sizeof(int));
+	read_array(ah_monochrome, "ah_monochrome.txt");
+	*(arm_val_ptr) = 0; // sanity check
+	*(arm_ack_ptr) = 0; // sanity check
+	struct Tuple *line_list = (struct Tuple *)malloc(N_LINES * sizeof(struct Tuple) * 2);
+	struct Tuple *xy = (struct Tuple *)malloc(N_HOOKS * sizeof(struct Tuple));
+	generate_hooks_with_size(xy);
 
-// 	int prev_edge = rand() % N_HOOKS;
-// 	for (int i = 0; i < N_LINES; i++){
-// 		starting_edge = prev_edge;
-// 		int *chosen = (int *)malloc(SPACE_SAVER * sizeof(int));
-// 		generate_unique_random_numbers(0, N_HOOKS - 1, starting_edge, SPACE_SAVER, chosen);
+	int prev_edge = rand() % N_HOOKS;
+	for (int i = 0; i < N_LINES; i++){
+		int starting_edge = prev_edge;
+		int *chosen = (int *)malloc(SPACE_SAVER * sizeof(int));
+		generate_unique_random_numbers(0, N_HOOKS - 1, starting_edge, SPACE_SAVER, chosen);
 		
-// 		// have the randomly chosen indices to consider, transfer to fpga
+		// have the randomly chosen indices to consider, transfer to fpga
 
-// 		// FIRST TRANSFER THE STARTING POINT===============================
-// 		*(arm_val_ptr) = 0;
+		// FIRST TRANSFER THE STARTING POINT===============================
+		*(arm_val_ptr) = 0;
 
-// 		int is_last_line = i == N_LINES - 1;
-// 		uint32_t combined;
-// 		uint16_t x = (uint16_t)xy[starting_edge].x;
-// 		uint16_t y = (uint16_t)xy[starting_edge].y;
-// 		combined = ((uint32_t)is_last_line << 31) | (( (uint32_t) y << 16) | x); // bit 31 is is_last, bits 30-16 is y, bits 15-0 is x
-// 		*(fpga_data_ptr) = combined;
+		int is_last_line = i == N_LINES - 1;
+		uint32_t combined;
+		uint16_t x = (uint16_t)xy[starting_edge].x;
+		uint16_t y = (uint16_t)xy[starting_edge].y;
+		combined = ((uint32_t)is_last_line << 31) | (( (uint32_t) y << 16) | x); // bit 31 is is_last, bits 30-16 is y, bits 15-0 is x
+		*(fpga_data_ptr) = combined;
 
-// 		*(arm_val_ptr) = 1; // try to transfer
-// 		while (!*(fpga_ack_ptr))
-// 		{ // wait for fpga to ack
-// 		}
-// 		*(arm_val_ptr) = 0; // clear our val
+		*(arm_val_ptr) = 1; // try to transfer
+		printf(" HI IM HERE\n");
+		while (!*(fpga_ack_ptr))
+		{ // wait for fpga to ack
+			printf(" FUCKING SPINNING\n");
+		}
+		*(arm_val_ptr) = 0; // clear our val
 
-// 		// once acked, send clear flag, through the form of return ack
-// 		*(arm_ack_ptr) = 1;
-// 		while (*(fpga_ack_ptr))
-// 		{ // wait for fpga to clear ack
-// 		}
-// 		*(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
-// 		// FIRST TRANSFER THE STARTING POINT===============================
+		// once acked, send clear flag, through the form of return ack
+		*(arm_ack_ptr) = 1;
+		while (*(fpga_ack_ptr))
+		{ // wait for fpga to clear ack
+		}
+		*(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
+		// FIRST TRANSFER THE STARTING POINT===============================
 
-// 		for (int j = 0; j < SPACE_SAVER; j++){
-// 			*(arm_val_ptr) = 0;
-// 			int ending_edge = chosen[j];
+		for (int j = 0; j < SPACE_SAVER; j++){ // TRANSFER THE ENDPOINTS
+			*(arm_val_ptr) = 0;
+			int ending_edge = chosen[j];
 
-// 			uint32_t is_last_chosen = j == SPACE_SAVER - 1;
-// 			uint32_t combined_last = ((uint32_t)is_last_line << 31) | ((uint32_t)is_last_chosen << 15); 
+			uint32_t is_last_chosen = j == SPACE_SAVER - 1;
+			uint32_t combined_last = ((uint32_t)is_last_line << 31) | ((uint32_t)is_last_chosen << 15); 
 
-// 			uint32_t combined;
-// 			uint16_t x = (uint16_t)xy[ending_edge].x;
-// 			uint16_t y = (uint16_t)xy[ending_edge].y;
+			uint32_t combined;
+			uint16_t x = (uint16_t)xy[ending_edge].x;
+			uint16_t y = (uint16_t)xy[ending_edge].y;
 
-// 			combined = combined_last | (( (uint32_t) y << 16) | x); // bit 31 is is_last, bits 30-16 is y, bit 15 is is_last, bits 14-0 is x
-// 			*(fpga_data_ptr) = combined;
-// 			*(arm_val_ptr) = 1; // try to transfer
-// 			while (!*(fpga_ack_ptr))
-// 			{ // wait for fpga to ack
-// 			}
-// 			*(arm_val_ptr) = 0; // clear our val
+			combined = combined_last | (( (uint32_t) y << 16) | x); // bit 31 is is_last, bits 30-16 is y, bit 15 is is_last, bits 14-0 is x
+			*(fpga_data_ptr) = combined;
+			*(arm_val_ptr) = 1; // try to transfer
+			while (!*(fpga_ack_ptr))
+			{ // wait for fpga to ack
+			}
+			*(arm_val_ptr) = 0; // clear our val
 
-// 			// once acked, send clear flag, through the form of return ack
-// 			*(arm_ack_ptr) = 1;
-// 			while (*(fpga_ack_ptr))
-// 			{ // wait for fpga to clear ack
-// 			}
-// 			*(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
-// 		}
+			// once acked, send clear flag, through the form of return ack
+			*(arm_ack_ptr) = 1;
+			while (*(fpga_ack_ptr))
+			{ // wait for fpga to clear ack
+			}
+			*(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
+		}
 
-// 		// values have been transferred, now wait for fpga to calculate
-// 		*(arm_ack_ptr) = 0; // sanity check
-// 		while (!*(fpga_val_ptr)) { // wait for valid data from FPGA
-// 		}
-// 		// update the values
-// 		int best_edge = *(fpga_data_ptr);
-// 		line_list[i * 2] = xy[starting_edge];
-// 		line_list[i * 2 + 1] = xy[best_edge];
+		// values have been transferred, now wait for fpga to calculate
+		
 
-// 		*(arm_ack_ptr) = 1; // ack the data
-// 		while (!*(fpga_ack_ptr))
-// 		{ // wait for FPGA to read ack
-// 		}
-// 		*(arm_ack_ptr) = 0; // reset ack
-// 		while (*(fpga_ack_ptr))
-// 		{ // wait for FPGA to reset ack
-// 		}
-// 	}
-// 	printf("DONE CALCULATING\n");
+		int *norms = (int *)malloc(SPACE_SAVER * sizeof(int));
+		int *reductions = (int *)malloc(SPACE_SAVER * sizeof(int));
+		for (int k = 0; k < SPACE_SAVER; k++){
+			*(arm_ack_ptr) = 0; // sanity check
+			while (!*(fpga_val_ptr))
+			{ // wait for valid data from FPGA
+			}
+			int norm = *(fpga_data_ptr) >> 16;
+			int reduction = *(fpga_data_ptr) & 0xFFFF;
+			norms[k] = norm;
+			reductions[k] = reduction;
+
+			*(arm_ack_ptr) = 1; // ack the data
+			while (!*(fpga_ack_ptr))
+			{ // wait for FPGA to read ack
+			}
+			*(arm_ack_ptr) = 0; // reset ack
+			while (*(fpga_ack_ptr))
+			{ // wait for FPGA to reset ack
+			}
+		}
+
+		free(norms);
+		free(reductions);
+		free(chosen);
+
+		// get the best value
+		int best_reduction = INT_MIN;
+		int chosen_edge = -1;
+		for (int l = 0; l < SPACE_SAVER; l++){
+			int true = reductions[l] / norms[l];
+			if (true > best_reduction){
+				best_reduction = true;
+				chosen_edge = l;
+			}
+		}
+		// add the chosen edge to the list
+		line_list[i * 2] = xy[starting_edge];
+		line_list[i * 2 + 1] = xy[chosen_edge];
+		prev_edge = chosen_edge;
+
+		// update the values and write values back to FPGA
+		*(arm_val_ptr) = 0; // sanity check
+		struct Tuple p0 = xy[starting_edge];
+		struct Tuple p1 = xy[chosen_edge];
+		struct LinkedList* pixels = initLinkedList();
+
+		through_pixels(p0, p1, pixels);
+		struct Node * current = pixels->head;
+		while (current != NULL) {
+			struct Node *temp = current;
+			*(arm_val_ptr) = 0; // sanity check
+			int other_value;
+			int cur_image_value = ah_monochrome[temp->data.x + (temp->data.y) * COLS ];
+			int new_image_value = cur_image_value - DARKNESS;
+			int which_mem = temp->data.y >> 1; // divide by 2
+			int addr = temp->data.x;
+
+			// construct the combined value
+			uint32_t combined;
+			uint32_t combined_address;
+			if (temp->data.y % 2 == 0) { // if value is even we have the upper value already, need lower value		
+				other_value = ah_monochrome[temp->data.x + (temp->data.y + 1) * COLS ];
+				combined = (((uint32_t)other_value << 10) | new_image_value);
+			}
+			else {
+				other_value = ah_monochrome[temp->data.x + (temp->data.y - 1) * COLS ];
+				combined = (((uint32_t)new_image_value << 10) | other_value);
+			}
+			combined_address = ((uint32_t)which_mem << 16) | addr;
+
+			*(arm_data_ptr) = combined;
+			*(arm_data2_ptr) = combined_address;
+
+			*(arm_val_ptr) = 1; // try to transfer
+			while (!*(fpga_ack_ptr))
+			{ // wait for fpga to ack
+			}
+			*(arm_val_ptr) = 0; // clear our val
+
+			// once acked, send clear flag, through the form of return ack
+			*(arm_ack_ptr) = 1;
+			while (*(fpga_ack_ptr))
+			{ // wait for fpga to clear ack
+			}
+			*(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
+			current = current->next;
+			free(temp);
+		}
+		free(pixels);
+	}
+	printf("DONE CALCULATING\n");
 
 
-// 	// Open the file for writing
-// 	printf("WRITING OUTPUT FILE\n");
-// 	FILE *file = fopen("fpga_output.txt", "w");
-// 	if (file == NULL)
-// 	{
-// 		printf("Error opening the file.\n");
-// 		return 1;
-// 	}
-// 	// Write the array elements to the file
-// 	for (int i = 0; i < N_LINES; i++)
-// 	{
-// 		fprintf(file, "%d", line_list[i * 2].x);
-// 		fprintf(file, " %d", line_list[i * 2].y);
-// 		fprintf(file, " %d", line_list[i * 2 + 1].x);
-// 		fprintf(file, " %d", line_list[i * 2 + 1].y);
-// 		// Use a newline character instead of a comma to separate elements
-// 		if (i < N_LINES - 1)
-// 		{
-// 			fprintf(file, "\n");
-// 		}
-// 	}
-// 	// Close the file
-// 	fclose(file);
+	// Open the file for writing
+	printf("WRITING OUTPUT FILE\n");
+	FILE *file = fopen("fpga_output.txt", "w");
+	if (file == NULL)
+	{
+		printf("Error opening the file.\n");
+		// return 1;
+	}
+	// Write the array elements to the file
+	for (int i = 0; i < N_LINES; i++)
+	{
+		fprintf(file, "%d", line_list[i * 2].x);
+		fprintf(file, " %d", line_list[i * 2].y);
+		fprintf(file, " %d", line_list[i * 2 + 1].x);
+		fprintf(file, " %d", line_list[i * 2 + 1].y);
+		// Use a newline character instead of a comma to separate elements
+		if (i < N_LINES - 1)
+		{
+			fprintf(file, "\n");
+		}
+	}
+	// Close the file
+	fclose(file);
 
-// 	printf("DONE WRITING\n");
+	printf("DONE WRITING\n");
 
-// 	free(xy);
-// 	free(line_list);
-// }
+	free(xy);
+	free(line_list);
+	free(ah_monochrome);
+} // BOTTOM OF SERVICE_CALC
 
 // graphics primitives
 void VGA_text (int, int, char *);
@@ -495,6 +633,7 @@ int main(void)
     
 	// map PIO
 	arm_data_ptr =(unsigned int *)(h2p_lw_virtual_base + ARM_DATA_BASE);
+	arm_data2_ptr = (unsigned int *)(h2p_lw_virtual_base + ARM_DATA2_BASE);
 	arm_val_ptr =(unsigned int *)(h2p_lw_virtual_base + ARM_VAL_BASE);
 	arm_rdy_ptr =(unsigned int *)(h2p_lw_virtual_base + ARM_RDY_BASE);
 	fpga_data_ptr =(unsigned int *)(h2p_lw_virtual_base + FPGA_DATA_BASE);
@@ -566,7 +705,7 @@ int main(void)
 		*(arm_rdy_ptr) = 0;
 		*(arm_data_ptr) = 0;
 		*(arm_ack_ptr) = 0;
-		printf("press w to write FPGA memory, v to verify FPGA memory \n");
+		printf("press w to write FPGA memory, v to verify FPGA memory, c to calculate \n");
 		char input;
 		if (scanf("%c", &input))
 		{
@@ -581,6 +720,12 @@ int main(void)
 				pthread_t service_write;
 				pthread_create(&service_write, NULL, SERVICE_WRITE, NULL);
 				pthread_join(service_write, NULL);
+			}
+
+			if (input == 'c'){
+				pthread_t service_calc;
+				pthread_create(&service_calc, NULL, SERVICE_CALC, NULL);
+				pthread_join(service_calc, NULL);
 			}
 		}
 

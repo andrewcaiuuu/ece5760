@@ -15,7 +15,7 @@ module mem_writer(
     output logic fpga_ack,
 
     // for memories
-    output logic signed [17:0] d,
+    output signed [19:0] d,
     output logic [9:0] addr,
     output logic we,
     output logic [9:0] which_mem,

@@ -49,7 +49,7 @@ module testbench();
     logic [3:0] state = 1;
     always @ (posedge clk_50) begin
         if (state == 0) begin 
-            state <= 0;
+            state <= 1;
             ack <= 0; // sanity
         end 
         else if (state == 1) begin 
@@ -57,11 +57,11 @@ module testbench();
         end 
         else if (state == 2) begin
             state <= 3;
-            ack <= 1;
+            ack <= 0;
         end 
         else if (state == 3) begin 
             state <= 0;
-            ack <= 0;
+            ack <= 1;
         end 
     end 
 

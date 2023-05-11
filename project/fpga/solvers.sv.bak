@@ -15,8 +15,7 @@ module solvers(
     output logic [9:0] image_mem_addr,
     output logic [9:0] which_mem,
     output logic we,
-    output logic [19:0] image_mem_writeout,
-    output logic [7:0] debug_count
+    output logic [19:0] image_mem_writeout
 );
 
 logic [8:0] x0, y0;
@@ -76,7 +75,7 @@ genvar j;
 generate 
     for (j=0; j<40; j=j+1) begin: reductionGen
         reduction_calculator rc(
-            .image_data(image_readouts[j]),
+            .image_mem_data(image_readouts[j]),
             .weight_data(0),
             .reduction(reductions[j])
         );
@@ -97,9 +96,6 @@ logic is_last;
 
 logic have_valid;
 integer rr, ii, jj, rrr;
-
-assign debug_count = state;
-
 always @(posedge clk) begin 
     if (reset) begin 
         we <= 0;
