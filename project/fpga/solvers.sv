@@ -102,7 +102,7 @@ logic have_valid;
 integer rr, ii, jj, rrr, kk;
 
 assign debug_count[5:0] = state;
-assign debug_count[31:24] = read_index;
+assign debug_count[31:24] = read_counter;
 
 logic [10:0] want;
 logic [39:0] hit;

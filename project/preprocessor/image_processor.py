@@ -51,10 +51,10 @@ def display_image_from_txt(source):
     image.show()
 
 if __name__ == "__main__":
-    image = prepare_image("preprocessor/ah_monochrome.jpg", weighting=False)
-    np.savetxt('preprocessor/ah_monochrome.txt', image, fmt='%d', delimiter=' ')
+    image = prepare_image("preprocessor/butterfly.png", weighting=False)
+    np.savetxt('preprocessor/butterfly.txt', image, fmt='%d', delimiter=' ')
 
     weight = prepare_image( "preprocessor/ah_wpos.jpg", weighting=True)
     np.savetxt('preprocessor/ah_wpos.txt', weight, fmt='%d', delimiter=' ')
 
-    display_image_from_txt("preprocessor/ah_monochrome.txt")
+    display_image_from_txt("preprocessor/butterfly.txt")
