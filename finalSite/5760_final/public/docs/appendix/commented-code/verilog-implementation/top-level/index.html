@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="C implementation#// compile with gcc thread_art.c -o out -O2 -lm -std=c99 #include &lt;stdio.h&gt; #include &lt;stdlib.h&gt; #include &lt;math.h&gt; #include &lt;time.h&gt; #define WHEEL_PIXEL_SIZE 1600 #define N_HOOKS 160 // needs to be divisible by 2 #define HOOK_PIXEL_SIZE 3 #define ROWS 1600 #define COLS 1600 #define N_LINES 800 #define LIGHTNESS_PENALTY 1 // defined in terms of right shifts #define DARKNESS 800 #define TIME_SAVER 40 // defined as terms to actually consider #ifndef M_PI #define M_PI 3.">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="color-scheme" content="light dark"><meta property="og:title" content="" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="/docs/appendix/commented-code/verilog-implementation/top-level/" />
+<title>Top Level | ECE 5760 Final Project</title>
+<link rel="manifest" href="../../../../../manifest.json">
+<link rel="icon" href="../../../../../favicon.png" type="image/x-icon">
+<link rel="stylesheet" href="../../../../../book.min.33a48f5432973b8ff9a82679d9e45d67f2c15d4399bd2829269455cfe390b5e8.css" >
+  <script defer src="../../../../../flexsearch.min.js"></script>
+  <script defer src="../../../../../en.search.min.b0c4aa5971f272ad643ad39c957fd01ebe13ff1f81c0257985e2dc61215b880b.js" ></script>
+<link rel="alternate" type="application/rss+xml" href="../../../../../docs/appendix/commented-code/verilog-implementation/top-level/index.xml" title="ECE 5760 Final Project" />
+<!--
+Made with Book Theme
+https://github.com/alex-shpak/hugo-book
+-->
+  
+</head>
+<body dir="ltr">
+  <input type="checkbox" class="hidden toggle" id="menu-control" />
+  <input type="checkbox" class="hidden toggle" id="toc-control" />
+  <main class="container flex">
+    <aside class="book-menu">
+      <div class="book-menu-content">
+        
+  <nav>
+<h2 class="book-brand">
+  <a class="flex align-center" href="../../../../../"><span>ECE 5760 Final Project</span>
+  </a>
+</h2>
+
+
+<div class="book-search">
+  <input type="text" id="book-search-input" placeholder="Search" aria-label="Search" maxlength="64" data-hotkeys="s/" />
+  <div class="book-search-spinner hidden"></div>
+  <ul id="book-search-results"></ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+  
+  <ul>
+    
+      
+        <li class="book-section-flat" >
+          
+  
+  
+
+  
+    <span>Appendix</span>
+  
+
+          
+  <ul>
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <input type="checkbox" id="section-03af186d4354d1a949635485871312da" class="toggle" checked />
+    <label for="section-03af186d4354d1a949635485871312da" class="flex justify-between">
+      <a role="button" class="">Commented Code</a>
+    </label>
+  
+
+          
+  <ul>
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <input type="checkbox" id="section-ca9b5a63f1250e7d6b9247c354c6d137" class="toggle" checked />
+    <label for="section-ca9b5a63f1250e7d6b9247c354c6d137" class="flex justify-between">
+      <a role="button" class="">Verilog Implementation</a>
+    </label>
+  
+
+          
+  <ul>
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../../../../docs/appendix/commented-code/verilog-implementation/top-level/" class="active">Top Level</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../../../../docs/appendix/commented-code/c-implementation/" class="">C Implementation</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <span>Hps</span>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../../../../docs/appendix/gallery/" class="">Gallery</a>
+  
+
+        </li>
+      
+    
+  </ul>
+
+        </li>
+      
+    
+  </ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</nav>
+
+
+
+
+  <script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script>
+
+
+ 
+      </div>
+    </aside>
+
+    <div class="book-page">
+      <header class="book-header">
+        
+  <div class="flex align-center justify-between">
+  <label for="menu-control">
+    <img src="../../../../../svg/menu.svg" class="book-icon" alt="Menu" />
+  </label>
+
+  <strong>Top Level</strong>
+
+  <label for="toc-control">
+    
+    <img src="../../../../../svg/toc.svg" class="book-icon" alt="Table of Contents" />
+    
+  </label>
+</div>
+
+
+  
+  <aside class="hidden clearfix">
+    
+  
+<nav id="TableOfContents"></nav>
+
+
+
+  </aside>
+  
+ 
+      </header>
+
+      
+      
+  <article class="markdown"><h1 id="c-implementation">
+  C implementation
+  <a class="anchor" href="#c-implementation">#</a>
+</h1>
+<pre tabindex="0"><code>// compile with gcc thread_art.c -o out -O2 -lm -std=c99
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;math.h&gt;
+#include &lt;time.h&gt;
+
+#define WHEEL_PIXEL_SIZE 1600
+#define N_HOOKS 160 // needs to be divisible by 2
+#define HOOK_PIXEL_SIZE 3
+#define ROWS 1600
+#define COLS 1600
+#define N_LINES 800
+#define LIGHTNESS_PENALTY 1 // defined in terms of right shifts
+#define DARKNESS 800
+#define TIME_SAVER 40 // defined as terms to actually consider
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+#ifndef INT_MIN
+#define INT_MIN -2147483648
+#endif
+
+// HELPER STUFF
+struct Tuple
+{
+    int x;
+    int y;
+};
+
+struct Node
+{
+    struct Tuple data;
+    struct Node *next;
+};
+
+struct LinkedList
+{
+    struct Node *head;
+    struct Node *tail;
+};
+
+struct LinkedList *initLinkedList()
+{
+    struct LinkedList *list = (struct LinkedList *)malloc(sizeof(struct LinkedList));
+    list-&gt;head = NULL;
+    list-&gt;tail = NULL;
+    return list;
+}
+
+void freeList(struct LinkedList *list)
+{
+    struct Node *current = list-&gt;head;
+    while (current != NULL)
+    {
+        struct Node *temp = current;
+        current = current-&gt;next;
+        free(temp);
+    }
+    free(list);
+}
+
+void append(struct LinkedList *list, struct Tuple data)
+{
+    // allocate memory for the new node
+    struct Node *new_node = (struct Node *)malloc(sizeof(struct Node));
+
+    // set the data of the new node
+    new_node-&gt;data = data;
+
+    // set the next pointer of the new node to NULL
+    new_node-&gt;next = NULL;
+
+    // if the list is empty, set the new node as the head and tail of the list
+    if (list-&gt;head == NULL)
+    {
+        list-&gt;head = new_node;
+        list-&gt;tail = new_node;
+    }
+    // otherwise, append the new node to the tail of the list
+    else
+    {
+        list-&gt;tail-&gt;next = new_node;
+        list-&gt;tail = new_node;
+    }
+}
+
+void print_list(struct LinkedList *list)
+{
+    struct Node *current = list-&gt;head;
+    int idx = 0;
+    while (current != NULL)
+    {
+        printf(&#34;idx %d: (%d, %d)\n&#34;, idx, current-&gt;data.x, current-&gt;data.y);
+        idx++;
+        current = current-&gt;next;
+    }
+}
+
+// END HELPER STUFF
+
+void read_array(int *array, char *path)
+{
+    // open the input file
+    FILE *fp = fopen(path, &#34;r&#34;);
+    if (fp == NULL)
+    {
+        printf(&#34;Failed to open file \n&#34;);
+    }
+    int count = 0;
+    // read the integers from the file into the array
+    for (int i = 0; i &lt; ROWS; i++)
+    {
+        for (int j = 0; j &lt; COLS; j++)
+        {
+            int cur;
+            if (!fscanf(fp, &#34;%d&#34;, &amp;cur))
+            {
+                printf(&#34;FAIL&#34;);
+            }
+            count++;
+            array[i * COLS + j] = cur;
+        }
+    }
+
+    // close the input file
+    fclose(fp);
+    printf(&#34;count: %d\n&#34;, count);
+}
+
+void generate_hooks_with_size(struct Tuple *xy) // generates points along a circle
+{
+    double r = (WHEEL_PIXEL_SIZE / 2.0) - 1.0;
+    double *theta = (double *)malloc((N_HOOKS) * sizeof(double));
+    double epsilon = asin(HOOK_PIXEL_SIZE / WHEEL_PIXEL_SIZE);
+    for (int i = 0; i &lt; (N_HOOKS &gt;&gt; 1); i++)
+    {
+        double angle = (double)i / (double)(N_HOOKS &gt;&gt; 1) * (2.0 * M_PI);
+        theta[i * 2] = angle - epsilon;
+        theta[i * 2 + 1] = angle + epsilon;
+    }
+    for (int j = 0; j &lt; N_HOOKS; j++)
+    {
+        struct Tuple point;
+        point.x = r * (1.0 + cos(theta[j])) + 0.5;
+        point.y = r * (1.0 + sin(theta[j])) + 0.5;
+        xy[j] = point;
+    }
+    free(theta);
+}
+
+void through_pixels(struct Tuple p0, struct Tuple p1, struct LinkedList *pixels) 
+{
+    int x0 = p0.x;
+    int y0 = p0.y;
+    int x1 = p1.x;
+    int y1 = p1.y;
+    int dx = abs(x1 - x0);
+    int dy = abs(y1 - y0);
+
+    int sx = (x0 &lt; x1) ? 1 : -1;
+    int sy = (y0 &lt; y1) ? 1 : -1;
+
+    int err = dx - dy;
+
+    while (1)
+    {
+        struct Tuple point;
+        point.x = x0;
+        point.y = y0;
+        append(pixels, point);
+
+        if (x0 == x1 &amp;&amp; y0 == y1)
+        {
+            return;
+        }
+
+        int e2 = 2 * err;
+
+        if (e2 &gt; -dy)
+        {
+            err -= dy;
+            x0 += sx;
+        }
+
+        if (e2 &lt; dx)
+        {
+            err += dx;
+            y0 += sy;
+        }
+        else if (e2 == dx)
+        { // Handle cases with slope 1 or -1
+            err -= dy;
+            x0 += sx;
+            err += dx;
+            y0 += sy;
+        }
+    }
+}
+
+// takes image assuming it has been preprocessed for weights
+int calculate_penalty(int cur, int weight)
+{
+    if (cur &lt; 0)
+    {
+        // // DEBUG______________________________
+        // return (weight &lt; 0) ? 0 : ((int)(-cur * 0.25) &gt;&gt; weight);
+        // // DEBUG______________________________
+        return (weight &lt; 0) ? 0 : -((cur &gt;&gt; LIGHTNESS_PENALTY) &gt;&gt; weight);
+    }
+    else
+    {
+        return (weight &lt; 0) ? 0 : (cur &gt;&gt; weight);
+    }
+}
+
+void generate_unique_random_numbers(int min, int max, int exclude, int N, int *result)
+{
+    int range = max - min + 1;
+    int adjusted_range = range - (exclude &gt;= min &amp;&amp; exclude &lt;= max);
+    if (N &gt; adjusted_range)
+    {
+        printf(&#34;Error: Cannot generate %d unique random numbers in the given range.\n&#34;, N);
+        return;
+    }
+
+    int *flags = (int *)calloc(range, sizeof(int));
+    flags[exclude - min] = 1;
+
+    for (int i = 0; i &lt; N; i++)
+    {
+        int rand_num;
+        do
+        {
+            rand_num = rand() % range + min;
+        } while (flags[rand_num - min]);
+
+        flags[rand_num - min] = 1;
+        result[i] = rand_num;
+    }
+
+    free(flags);
+}
+
+void optimise_fitness(int *image, int *weight, int *previous_edge, struct Tuple *xy)
+{
+    int starting_edge = *previous_edge;
+    int count = 0;
+    // randomly chose a subset of endpoints
+    int *chosen = (int *)malloc(TIME_SAVER * sizeof(int));
+    generate_unique_random_numbers(0, N_HOOKS - 1, starting_edge, TIME_SAVER, chosen);
+
+    // // DEBUG______________________________
+    // for (int ii = 0; ii &lt; TIME_SAVER; ii ++){
+    //     printf(&#34;el %d: %d \n&#34;, ii, chosen[ii]);
+    // }
+    // // DEBUG______________________________
+
+    int best_endpoint = -1;
+    int best_reduction = INT_MIN;
+    for (int i = 0; i &lt; TIME_SAVER; i++)
+    {
+        int ending_edge = chosen[i];
+        struct LinkedList *pixels = initLinkedList();
+        int penalty_without = 0;
+        int penalty_with = 0;
+        int reduction;
+        through_pixels(xy[starting_edge], xy[ending_edge], pixels);
+        int norm = 0;
+        struct Node *current = pixels-&gt;head;
+        while (current != NULL)
+        {
+            norm++;
+            struct Node *temp = current;
+            int image_data = image[temp-&gt;data.x + (temp-&gt;data.y) * COLS];
+            int weight_data;
+            if (temp-&gt;data.y % 2 == 0) {
+                weight_data = weight[temp-&gt;data.x + (temp-&gt;data.y) * COLS];
+            }
+            else {
+                weight_data = weight[temp-&gt;data.x + (temp-&gt;data.y - 1) * COLS];
+            }
+            
+            int cur_penalty_without = calculate_penalty(image_data, weight_data);
+            int cur_penalty_with = calculate_penalty(image_data - DARKNESS, weight_data);
+            penalty_with = cur_penalty_with + penalty_with;
+            penalty_without = cur_penalty_without + penalty_without;
+            current = current-&gt;next;
+            free(temp);
+        }
+        free(pixels);
+        reduction = (penalty_without - penalty_with) / norm;
+        if (reduction &gt; best_reduction)
+        {
+            best_reduction = reduction;
+            best_endpoint = ending_edge;
+        }
+    }
+    free(chosen);
+    *previous_edge = best_endpoint;
+}
+
+void update_image(int *image, struct Tuple *xy, int start, int end)
+{
+    struct LinkedList *pixels = initLinkedList();
+    through_pixels(xy[start], xy[end], pixels);
+    struct Node *current = pixels-&gt;head;
+    while (current != NULL)
+    {
+        struct Node *temp = current;
+        image[temp-&gt;data.x + (temp-&gt;data.y) * COLS] = image[temp-&gt;data.x + (temp-&gt;data.y) * COLS] - DARKNESS;
+        current = current-&gt;next;
+        free(temp);
+    }
+    free(pixels);
+}
+
+void find_lines(int *image, int *weight, struct Tuple *xy, struct Tuple *line_list)
+{
+    int next_edge_value = rand() % N_HOOKS;
+    int *next_edge = &amp;next_edge_value;
+    for (int i = 0; i &lt; N_LINES; i++)
+    {
+        int previous_edge = *next_edge;
+        optimise_fitness(image, weight, next_edge, xy);
+        update_image(image, xy, previous_edge, *next_edge);
+        line_list[i * 2] = xy[previous_edge];
+        line_list[i * 2 + 1] = xy[*next_edge];
+    }
+}
+
+void p_t(struct Tuple point)
+{
+    printf(&#34;%d, %d&#34;, point.x, point.y);
+}
+
+int main()
+{
+    // static seed for testing
+    srand(42);
+
+    clock_t start, end;
+    double cpu_time_used;
+    start = clock();
+    printf(&#34;Generating Hooks\n&#34;);
+
+    struct Tuple *xy = (struct Tuple *)malloc(N_HOOKS * sizeof(struct Tuple));
+
+    generate_hooks_with_size(xy);
+
+    printf(&#34;Reading Image Data\n&#34;);
+    int *ah_monochrome = malloc((ROWS * COLS) * sizeof(int));
+    read_array(ah_monochrome, &#34;monalisa.txt&#34;);
+
+    printf(&#34;Reading Weight Data\n&#34;);
+    int *ah_weights = malloc((ROWS * COLS) * sizeof(int));
+    read_array(ah_weights, &#34;ah_wpos.txt&#34;);
+
+    // COMMENT WHEN USING WEIGHTS
+    // for (int j = 0; j &lt; ROWS; j++){
+    //     for (int k = 0; k &lt; COLS; k++){
+    //         ah_weights[j*COLS+k] = 0;
+    //     }
+    // }
+
+    printf(&#34;Allocating connections list and running optimizer\n&#34;);
+    struct Tuple *line_list = (struct Tuple *)malloc(N_LINES * sizeof(struct Tuple) * 2);
+    find_lines(ah_monochrome, ah_weights, xy, line_list);
+
+    // Open the file for writing
+    printf(&#34;Done, writing output file\n&#34;);
+    FILE *file = fopen(&#34;output.txt&#34;, &#34;w&#34;);
+    if (file == NULL)
+    {
+        printf(&#34;Error opening the file.\n&#34;);
+        return 1;
+    }
+
+    // Write the array elements to the file
+    for (int i = 0; i &lt; N_LINES; i++)
+    {
+        fprintf(file, &#34;%d&#34;, line_list[i * 2].x);
+        fprintf(file, &#34; %d&#34;, line_list[i * 2].y);
+        fprintf(file, &#34; %d&#34;, line_list[i * 2 + 1].x);
+        fprintf(file, &#34; %d&#34;, line_list[i * 2 + 1].y);
+        // Use a newline character instead of a comma to separate elements
+        if (i &lt; N_LINES - 1)
+        {
+            fprintf(file, &#34;\n&#34;);
+        }
+    }
+
+    // Close the file
+    fclose(file);
+
+    printf(&#34;Array written to the output.txt file.\n&#34;);
+
+    free(line_list);
+    free(xy);
+    free(ah_monochrome);
+    free(ah_weights);
+
+    end = clock();
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+
+    printf(&#34;Memory freed, used %f CPU time\n&#34;, cpu_time_used);
+    return 0;
+}
+</code></pre></article>
+ 
+      
+
+      <footer class="book-footer">
+        
+  <div class="flex flex-wrap justify-between">
+
+
+
+
+
+</div>
+
+
+
+  <script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script>
+
+
+ 
+        
+      </footer>
+
+      
+  
+  <div class="book-comments">
+
+</div>
+  
+ 
+
+      <label for="menu-control" class="hidden book-menu-overlay"></label>
+    </div>
+
+    
+    <aside class="book-toc">
+      <div class="book-toc-content">
+        
+  
+<nav id="TableOfContents"></nav>
+
+
+ 
+      </div>
+    </aside>
+    
+  </main>
+
+  
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+

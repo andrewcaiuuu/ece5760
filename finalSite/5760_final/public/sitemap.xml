@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>/docs/appendix/commented-code/</loc>
+  </url><url>
+    <loc>/docs/appendix/commented-code/verilog-implementation/</loc>
+  </url><url>
+    <loc>/docs/appendix/</loc>
+  </url><url>
+    <loc>/docs/appendix/commented-code/c-implementation/</loc>
+  </url><url>
+    <loc>/docs/appendix/commented-code/hps/</loc>
+  </url><url>
+    <loc>/docs/appendix/commented-code/verilog-implementation/top-level/</loc>
+  </url><url>
+    <loc>/docs/appendix/gallery/</loc>
+  </url><url>
+    <loc>/categories/</loc>
+  </url><url>
+    <loc>/docs/</loc>
+  </url><url>
+    <loc>/</loc>
+  </url><url>
+    <loc>/tags/</loc>
+  </url>
+</urlset>

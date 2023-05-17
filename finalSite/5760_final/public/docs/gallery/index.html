@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="FPGA Accelerated Thread Art#Project Introduction#We create a parallel implementation of &ldquo;thread art&rdquo; algorithm that simulates rendering an image by wrapping single piece of string around hooks placed in a circle.
+Example Excution Progress 20% 40% 60% 80% 100% ref High Level Design#We utilize a simplified version of the algorithm from this github repository.
+There are many similar implementations, but we found that the optimizations introduced here resulted in better quality images.">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="color-scheme" content="light dark"><meta property="og:title" content="Home" />
+<meta property="og:description" content="FPGA Accelerated Thread Art#Project Introduction#We create a parallel implementation of &ldquo;thread art&rdquo; algorithm that simulates rendering an image by wrapping single piece of string around hooks placed in a circle.
+Example Excution Progress 20% 40% 60% 80% 100% ref High Level Design#We utilize a simplified version of the algorithm from this github repository.
+There are many similar implementations, but we found that the optimizations introduced here resulted in better quality images." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="/docs/gallery/" /><meta property="article:section" content="docs" />
+
+
+<title>Home | ECE 5760 Final Project</title>
+<link rel="manifest" href="../../manifest.json">
+<link rel="icon" href="../../favicon.png" type="image/x-icon">
+<link rel="stylesheet" href="../../book.min.33a48f5432973b8ff9a82679d9e45d67f2c15d4399bd2829269455cfe390b5e8.css" >
+  <script defer src="../../flexsearch.min.js"></script>
+  <script defer src="../../en.search.min.be2207b5f1def92e7632c06b7b7919dacfaa6a09bbaf9fe161264d5305f17827.js" ></script>
+<!--
+Made with Book Theme
+https://github.com/alex-shpak/hugo-book
+-->
+  
+</head>
+<body dir="ltr">
+  <input type="checkbox" class="hidden toggle" id="menu-control" />
+  <input type="checkbox" class="hidden toggle" id="toc-control" />
+  <main class="container flex">
+    <aside class="book-menu">
+      <div class="book-menu-content">
+        
+  <nav>
+<h2 class="book-brand">
+  <a class="flex align-center" href="../../"><span>ECE 5760 Final Project</span>
+  </a>
+</h2>
+
+
+<div class="book-search">
+  <input type="text" id="book-search-input" placeholder="Search" aria-label="Search" maxlength="64" data-hotkeys="s/" />
+  <div class="book-search-spinner hidden"></div>
+  <ul id="book-search-results"></ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+  
+  <ul>
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../docs/code/" class="">Home</a>
+  
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../docs/gallery/" class="active">Home</a>
+  
+
+        </li>
+      
+    
+  </ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</nav>
+
+
+
+
+  <script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script>
+
+
+ 
+      </div>
+    </aside>
+
+    <div class="book-page">
+      <header class="book-header">
+        
+  <div class="flex align-center justify-between">
+  <label for="menu-control">
+    <img src="../../svg/menu.svg" class="book-icon" alt="Menu" />
+  </label>
+
+  <strong>Home</strong>
+
+  <label for="toc-control">
+    
+    <img src="../../svg/toc.svg" class="book-icon" alt="Table of Contents" />
+    
+  </label>
+</div>
+
+
+  
+  <aside class="hidden clearfix">
+    
+  
+<nav id="TableOfContents">
+  <ul>
+    <li><a href="#project-introduction">Project Introduction</a></li>
+    <li><a href="#high-level-design">High Level Design</a></li>
+    <li><a href="#locis-suis-novi-cum-suoque-decidit-eadem">Locis suis novi cum suoque decidit eadem</a></li>
+  </ul>
+</nav>
+
+
+
+  </aside>
+  
+ 
+      </header>
+
+      
+      
+  <article class="markdown"><h1 id="fpga-accelerated-thread-art">
+  FPGA Accelerated Thread Art
+  <a class="anchor" href="#fpga-accelerated-thread-art">#</a>
+</h1>
+<h2 id="project-introduction">
+  Project Introduction
+  <a class="anchor" href="#project-introduction">#</a>
+</h2>
+<p>We create a parallel implementation of &ldquo;thread art&rdquo; algorithm that simulates rendering an image by wrapping single piece of string around hooks placed in a circle.</p>
+<div align="center">
+  <figure>
+    <img src="circle_filled.png" alt="circle" width="500">
+    <figcaption>Example Excution Progress</figcaption>
+  </figure>
+  <figure style="display: inline-block;">
+    <img src="butterfly_output_20.jpg" alt="Alt text" width="120">
+    <figcaption>20%</figcaption>
+  </figure>
+  <figure style="display: inline-block;">
+    <img src="butterfly_output_40.jpg" alt="Alt text" width="120">
+    <figcaption>40%</figcaption>
+  </figure>
+  <figure style="display: inline-block;">
+    <img src="butterfly_output_60.jpg" alt="Alt text" width="120">
+    <figcaption>60%</figcaption>
+  </figure>
+  <figure style="display: inline-block;">
+    <img src="butterfly_output_80.jpg" alt="Alt text" width="120">
+    <figcaption>80%</figcaption>
+  </figure>
+  <figure style="display: inline-block;">
+    <img src="butterfly_output_100.jpg" alt="Alt text" width="120">
+    <figcaption>100%</figcaption>
+  </figure>
+  <figure style="display: inline-block;">
+    <img src="butterfly.png" alt="Alt text" width="150">
+    <figcaption>ref</figcaption>
+  </figure>
+</div>
+<h2 id="high-level-design">
+  High Level Design
+  <a class="anchor" href="#high-level-design">#</a>
+</h2>
+<p>We utilize a simplified version of the algorithm from <a href="https://github.com/callummcdougall/computational-thread-art">this</a> github repository.</p>
+<p>There are many similar implementations, but we found that the optimizations introduced here resulted in better quality images.</p>
+<p>At a high level, all the different algorithms aim to try possible lines from a given starting hook, and pick the resulting line that results in greatest similarity to the original image.</p>
+<p>In order to compute similarity, a penalty is formally defined below as:</p>
+<p><img src="eq1.png" alt="Equation Description" /></p>
+<p>For ease of computation, images are first inverted, with 255 representing complete darkness, and 0 representing complete brightness.</p>
+<p>A paramterized value <em>Line Darkness</em> set as 150 by default represents the darkness of a line. If a line is drawn through a sets of points, all points in the set have their inverted pixel value subtracted by 150.</p>
+<p><em><strong>p<sub>i</sub></strong></em> represents the inverted pixel value.</p>
+<p><em><strong>w<sub>i</sub></strong></em> represents the corresponding weight value, which applies a multiplier between 0 and 1, allowing for some pixels to contribute more to overall penalty and therefore be prioritized.</p>
+<p><em><strong>L</strong></em> represents the lightness penalty, another value between 0 and 1 that allows for negative values to contribute less to overall penalty, therefore increasing the algorithms willingness to draw more lines.</p>
+<p>At each step, the algorithm computes possible lines from a starting point and calculates the penalty through those points with (pixel values subtracted by <em>Line Darkness</em>) and without (original pixel values). It then selects the line the reduces the penalty by the greatest amount.</p>
+<p>From there, the chosen point because the starting point at the next step.</p>
+<p>The most important additions here are pixel weightings and parameterized lightness penalty. This allows for more detailed images.</p>
+<pre><code>var panel = ram_design;
+if (backup + system) {
+    file.readPoint = network_native;
+    sidebar_engine_device(cell_tftp_raster,
+            dual_login_paper.adf_vci.application_reader_design(
+            graphicsNvramCdma, lpi_footer_snmp, integer_model));
+}
+</code></pre>
+<h2 id="locis-suis-novi-cum-suoque-decidit-eadem">
+  Locis suis novi cum suoque decidit eadem
+  <a class="anchor" href="#locis-suis-novi-cum-suoque-decidit-eadem">#</a>
+</h2>
+<p>Idmoniae ripis, at aves, ali missa adest, ut <em>et autem</em>, et ab?</p>
+</article>
+ 
+      
+
+      <footer class="book-footer">
+        
+  <div class="flex flex-wrap justify-between">
+
+
+
+
+
+</div>
+
+
+
+  <script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script>
+
+
+ 
+        
+      </footer>
+
+      
+  
+  <div class="book-comments">
+
+</div>
+  
+ 
+
+      <label for="menu-control" class="hidden book-menu-overlay"></label>
+    </div>
+
+    
+    <aside class="book-toc">
+      <div class="book-toc-content">
+        
+  
+<nav id="TableOfContents">
+  <ul>
+    <li><a href="#project-introduction">Project Introduction</a></li>
+    <li><a href="#high-level-design">High Level Design</a></li>
+    <li><a href="#locis-suis-novi-cum-suoque-decidit-eadem">Locis suis novi cum suoque decidit eadem</a></li>
+  </ul>
+</nav>
+
+
+ 
+      </div>
+    </aside>
+    
+  </main>
+
+  
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+

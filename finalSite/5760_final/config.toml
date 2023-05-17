@@ -1,0 +1,14 @@
+languageCode = 'en-us'
+title = 'ECE 5760 Final Project'
+theme = "hugo-book"
+relativeURLs = true
+baseURL = "/"
+BookSearch = true
+
+[markup]
+    [markup.goldmark.renderer]
+		unsafe = true
+
+[params]
+  js = ["js/prism.js"]
+  css = ["css/prism.css"]
