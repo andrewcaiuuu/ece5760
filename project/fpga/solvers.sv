@@ -99,12 +99,13 @@ logic group_first;
 logic is_last;
 
 logic have_valid;
-integer rr, ii, jj, rrr, kk;
+integer rr, ii, jj, rrr, kk, iii;
 
 assign debug_count[5:0] = state;
 assign debug_count[31:24] = read_counter;
 
-logic [10:0] want;
+logic [10:0] want_pos;
+logic [10:0] want_neg;
 logic [39:0] hit;
 logic direction;
 
@@ -113,14 +114,15 @@ assign hit_reduction = |hit;
 
 always @(posedge clk) begin 
     if (reset) begin 
-        debug_count[7] <= 0;
+        debug_count[7] <= '0;
         debug_count[6] <= 0;
         we <= 0;
         which_mem <= 0;
         state <= 0;
         read_index <= 0;
         group_first <= 1;
-        want <= 0;
+        want_pos <= 0;
+        want_neg <= 0;
         hit <= 0;
         fpga_val <= 0;
         fpga_ack <= 0;
@@ -145,6 +147,8 @@ always @(posedge clk) begin
             group_first <= 0;
             if (group_first) begin 
                 // want <= arm_data[8:0]; // set want to x0
+                want_pos <= arm_data[8:0]; // set want to x0
+                want_neg <= arm_data[8:0]; // set want to x0
                 x0 <= arm_data[8:0];
                 y0 <= arm_data[17:9];
             end 
@@ -179,9 +183,11 @@ always @(posedge clk) begin
 
     else if (state == 3) begin 
         if ( group_last ) begin 
-            debug_count[7] <= 1;
             state <= 4;
             br_reset <= 1;
+            for (ii=0; ii<40; ii=ii+1) begin
+                enable_bs[ii] <= 0; // disable all bresenhams
+            end
         end 
         else begin 
             state <= 0;
@@ -198,27 +204,11 @@ always @(posedge clk) begin
         state <= 6;
     end 
     else if (state == 6) begin // BRESENHAM SOLVERS RUNNING
-        // ack_bs <= 0;
-        // state <= 10;
-        // if (combined_dones) begin // if all are done, move on
-        //     debug_count[6] <= 1;
-        //     state <= 10;
-        // end 
-        // else begin 
-        //     state <= 7;
-        // end 
         state <= 7;
-        for (ii=0; ii<40; ii=ii+1) begin // set address as first valid bresenham output
-            enable_bs[ii] <= 0; // disable all bresenhams
-            // if (valids[ii]) begin 
-            //     if (want == xs[ii]) begin 
-            //         hit[ii] <= 1;
-            //         image_mem_addr <= xs[ii];
-            //         which_mem <= ys[ii>>1];
-            //     end 
-            // end 
-        end
-        image_mem_addr <= xs[want];
+        // image_mem_addr <= xs[want];
+        for (iii = 0; iii<40; iii=iii+1)  begin 
+            
+        end 
         if (dones[want]) begin 
             state <= 6;
             want <= want + 1;
@@ -226,7 +216,6 @@ always @(posedge clk) begin
                 state <= 10;
             end
         end
-        // enable_bs[want]; // enable just want
         
     end 
     else if (state == 7) begin // memory latency
@@ -236,31 +225,12 @@ always @(posedge clk) begin
     else if (state == 8) begin // memory latency
         state <= 9;
         enable_bs[want] <= 1; // enable just want
-        // for (kk=0; kk<40; kk=kk+1) begin // only enable the ones that wre logged this cycle
-        //     if (hit[kk]) begin 
-        //         enable_bs[kk] <= 1;
-        //     end 
-        // end
     end 
     else if (state == 9) begin // this cycle bs_enable is 1, next cycle we will have next valid
-        // if (want == 40) begin 
-        //     state <= 10;
-        // end 
-        // else begin 
-        //     state <= 6;
-        // end 
         state <= 6;
         enable_bs[want] <= 0; // disable just want
         total_norms[want] <= total_norms[want] + 1;
         total_reductions[want] <= total_reductions[want] + reductions[want];
-        // for (jj=0; jj<40; jj=jj+1) begin 
-        //     if (hit[jj] == 1) begin 
-        //         // debug_count[6] <= 1;
-        //         total_norms[jj] <= total_norms[jj] + 1;
-        //         total_reductions[jj] <= total_reductions[jj] + reductions[jj];
-        //     end 
-        //     hit[jj] <= 0; // reset hit
-        // end
     end 
     else if (state == 10) begin // nothing was valid, send values to arm
         state <= 11;
@@ -287,6 +257,7 @@ always @(posedge clk) begin
         read_counter <= read_counter + 1;
         state <= 10;
         if (read_counter == 39) begin // done writing everything to arm
+        debug_count[6] <= 1;
             state <= 14;
         end 
     end  
@@ -318,10 +289,9 @@ always @(posedge clk) begin
     else if (state == 17) begin 
         if ( is_last ) begin 
 
+            debug_count[7] <= '1;
             fpga_val <= 0;
             fpga_ack <= 0;
-            debug_count[7] <= 0;
-            debug_count[6] <= 0;
             we <= 0;
             which_mem <= 0;
             state <= 0;
@@ -338,7 +308,7 @@ always @(posedge clk) begin
 
         end 
         else begin 
-            state <= 13;    
+            state <= 14;    
         end 
     end 
 end 

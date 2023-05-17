@@ -31,12 +31,12 @@ always_ff @(posedge clk) begin
             state <= RUN;
         end
         RUN:
-            if (enable) begin
-                if (x == x1 && y == y1) begin
-                    done <= 1;
-                    state <= DONE;
-                end else begin
-                    plot <= 1;
+            if (x == x1 && y == y1) begin
+                done <= 1;
+                state <= DONE;
+            end else begin
+                plot <= 1;
+                if (enable) begin
                     e2 = err << 1;
                     if (e2 > dy) begin
                         err += dy;
@@ -49,6 +49,7 @@ always_ff @(posedge clk) begin
                     else y <= y - 10'd 1;
                 end
             end
+
         end
 
         DONE: begin 

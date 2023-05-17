@@ -2,7 +2,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 from itertools import product
 
-def prepare_image(file_name, wheel_pixel_size=480, weighting=False):
+def prepare_image(file_name, wheel_pixel_size=1600, weighting=False):
     
     image = Image.open(file_name).resize((wheel_pixel_size, wheel_pixel_size))
 
@@ -50,10 +50,10 @@ def display_image_from_txt(source):
     image.show()
 
 if __name__ == "__main__":
-    image = prepare_image("python_preprocessor/ah_monochrome.jpg", weighting=False)
-    np.savetxt('python_preprocessor/ah_monochrome.txt', image, fmt='%d', delimiter=' ')
+    image = prepare_image("preprocessor/monalisa.jpg", weighting=False)
+    np.savetxt('preprocessor/monalisa.txt', image, fmt='%d', delimiter=' ')
 
-    weight = prepare_image( "python_preprocessor/ah_wpos.jpg", weighting=True)
-    np.savetxt('python_preprocessor/ah_wpos.txt', weight, fmt='%d', delimiter=' ')
+    # weight = prepare_image( "preprocessor/ah_wpos.jpg", weighting=True)
+    # np.savetxt('preprocessor/jellyfish_black.txt', weight, fmt='%d', delimiter=' ')
 
-    display_image_from_txt("python_preprocessor/ah_monochrome.txt")
+    display_image_from_txt("preprocessor/monalisa.txt")

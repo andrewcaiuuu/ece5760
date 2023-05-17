@@ -61,9 +61,18 @@ module testbench();
             ack <= 0;
         end 
         else if (state == 3) begin 
+            state <= 4;
+            ack <= 0;
+        end 
+        else if (state == 4) begin 
+            state <= 5;
+            state <= 0;
+            ack <= 0;
+        end 
+        else if (state == 5) begin 
             state <= 0;
             ack <= 1;
-        end 
+        end
     end 
 bresenham DUT   (.clk(clk_50), 
                 .reset(reset),

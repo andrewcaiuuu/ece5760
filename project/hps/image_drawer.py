@@ -16,7 +16,7 @@ def display_from_tuple_list(source, size):
         draw.line((line[0], line[1], line[2], line[3]), fill=(0,0,0))
 
     # thread_image.show()
-    thread_image.save("out.png")
+    thread_image.save("hps/out.png")
 
 if __name__ == "__main__":
-    display_from_tuple_list("output.txt", 480)
+    display_from_tuple_list("hps/output.txt", 480)

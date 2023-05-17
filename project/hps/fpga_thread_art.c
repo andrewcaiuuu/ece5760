@@ -334,9 +334,12 @@ void *SERVICE_WRITE()
 			uint16_t cur_top = (uint16_t)ah_monochrome[i * COLS + j];
 			uint16_t cur_bot = (uint16_t)ah_monochrome[ (i + 1) * COLS + j];
 			uint32_t is_last = (i == ROWS/2 - 1 && j == COLS - 1) << 31;
+
+			uint32_t mask = ~(1 << 31); // Bitmask with all bits set to 1, except bit 31
+
 			uint32_t combined;
-			combined = (((uint32_t)cur_bot << 10) | cur_top ) | is_last;
-			// printf("is last %d\n", is_last);
+			combined = (((uint32_t)cur_bot << 10) | cur_top ) & mask;
+			combined = combined | is_last;
 			*(arm_data_ptr) = combined;
 			count++;
 
@@ -381,7 +384,6 @@ void *SERVICE_CALC()
 		// FIRST TRANSFER THE STARTING POINT===============================
 		*(arm_val_ptr) = 0;
 
-		// int is_last_line = i == N_LINES - 1;
 		uint32_t combined;
 		uint16_t x = (uint16_t)xy[starting_edge].x;
 		uint16_t y = (uint16_t)xy[starting_edge].y;
@@ -391,17 +393,14 @@ void *SERVICE_CALC()
 		// uint16_t y = 0;
 
 		combined = ((uint32_t) y << 9 ) | x; 
-		// combined = ((uint32_t)is_last_line << 31) | (( (uint32_t) y << 16) | x); // bit 31 is is_last, bits 30-16 is y, bits 15-0 is x
 		*(fpga_data_ptr) = combined;
 
 		*(arm_val_ptr) = 1; // try to transfer
-		printf(" HI IM HERE\n");
 		while (!*(fpga_ack_ptr))
 		{ // wait for fpga to ack
 			// printf(" FUCKING SPINNING\n");
 		}
 		*(arm_val_ptr) = 0; // clear our val
-		printf("MADE IT OUT\n");
 		// once acked, send clear flag, through the form of return ack
 		*(arm_ack_ptr) = 1;
 		while (*(fpga_ack_ptr))
@@ -411,21 +410,22 @@ void *SERVICE_CALC()
 		*(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
 		// FIRST TRANSFER THE STARTING POINT===============================
 
-		for (int j = 0; j < SPACE_SAVER; j++){ // TRANSFER THE ENDPOINTS
+		for (int j = 0; j < SPACE_SAVER - 1; j++){ // TRANSFER THE ENDPOINTS, (starting point takes up one position)
 			*(arm_val_ptr) = 0;
 			int ending_edge = chosen[j];
 
-			uint32_t is_last_chosen = j == SPACE_SAVER - 1;
-			// uint32_t combined_last = ((uint32_t)is_last_line << 31) | ((uint32_t)is_last_chosen << 15); 
+			uint32_t is_last_chosen = j == SPACE_SAVER - 2;
+
+			uint32_t mask = ~(1 << 31); // Bitmask with all bits set to 1, except bit 31
+
 
 			uint32_t combined;
 			uint16_t x = (uint16_t)xy[ending_edge].x;
 			uint16_t y = (uint16_t)xy[ending_edge].y;
-			// printf("ending x: %d, ending y: %d\n", x, y);
-			// uint16_t x = 100;
-			// uint16_t y = 100;
-			combined = (((uint32_t)y << 9) | x ) | (is_last_chosen << 31);
-			// combined = combined_last | (( (uint32_t) y << 16) | x); // bit 31 is is_last, bits 30-16 is y, bit 15 is is_last, bits 14-0 is x
+			
+			combined = (((uint32_t)y << 9) | x ) & mask;
+			combined = combined | (is_last_chosen << 31);
+
 			*(fpga_data_ptr) = combined;
 			*(arm_val_ptr) = 1; // try to transfer
 			while (!*(fpga_ack_ptr))
@@ -444,12 +444,14 @@ void *SERVICE_CALC()
 		}
 
 		// values have been transferred, now wait for fpga to calculate
+		// printf(" VALUES TRANSFERRED \n");
 
 		*(arm_ack_ptr) = 0; // sanity check
 		// printf("fpga_val_ptr: %d\n", *(fpga_val_ptr));
 		int *norms = (int *)malloc(SPACE_SAVER * sizeof(int));
 		int *reductions = (int *)malloc(SPACE_SAVER * sizeof(int));
 		for (int k = 0; k < SPACE_SAVER; k++){
+			// printf("K is at %d\n", k);
 			*(arm_ack_ptr) = 0; // sanity check
 			while (!*(fpga_val_ptr))
 			{ // wait for valid data from FPGA
@@ -472,17 +474,17 @@ void *SERVICE_CALC()
 				printf("STUCK HERE5\n");
 			}
 		}
-		for (int kk = 0; kk < SPACE_SAVER; kk++){
-			printf("norms[%d]: %d\n", kk, norms[kk]);
-			printf("reductions[%d]: %d\n", kk, reductions[kk]);
-		}
+		// for (int kk = 0; kk < SPACE_SAVER; kk++){
+		// 	// printf("norms[%d]: %d\n", kk, norms[kk]);
+		// 	// printf("reductions[%d]: %d\n", kk, reductions[kk]);
+		// }
 
 		// get the best value
 		int best_reduction = INT_MIN;
 		int chosen_edge = -1;
 		for (int l = 0; l < SPACE_SAVER; l++){
 			float true = (float) reductions[l] / (float) norms[l];
-			printf("(true: %f %d %d %d %d\n", true, xy[starting_edge].x, xy[starting_edge].y, xy[chosen[l]].x, xy[chosen[l]].y);
+			// printf("(true: %f %d %d %d %d\n", true, xy[starting_edge].x, xy[starting_edge].y, xy[chosen[l]].x, xy[chosen[l]].y);
 			if (true > best_reduction){
 				best_reduction = true;
 				chosen_edge = l;
@@ -498,7 +500,7 @@ void *SERVICE_CALC()
 		line_list[i * 2 + 1] = xy[chosen_edge];
 		prev_edge = chosen_edge;
 
-		printf("(%d %d %d %d\n", xy[starting_edge].x, xy[starting_edge].y, xy[chosen_edge].x, xy[chosen_edge].y);
+		// printf("(%d %d %d %d)\n", xy[starting_edge].x, xy[starting_edge].y, xy[chosen_edge].x, xy[chosen_edge].y);
 
 		// update the values and write values back to FPGA
 		*(arm_val_ptr) = 0; // sanity check
@@ -509,9 +511,14 @@ void *SERVICE_CALC()
 		through_pixels(p0, p1, pixels);
 		struct Node * current = pixels->head;
 
-		printf("HI\n");
+		// printf("STARTING WRITEBACK\n");
 		while (current != NULL) {
 			struct Node *temp = current;
+			int is_last = current->next == NULL;
+			// printf("is_last: %d\n", is_last);
+
+			uint32_t mask = ~(1 << 31); // Bitmask with all bits set to 1, except bit 31
+
 			*(arm_val_ptr) = 0; // sanity check
 			int other_value;
 			int cur_image_value = ah_monochrome[temp->data.x + (temp->data.y) * COLS ];
@@ -531,6 +538,11 @@ void *SERVICE_CALC()
 				combined = (((uint32_t)new_image_value << 10) | other_value);
 			}
 			combined_address = ((uint32_t)which_mem << 16) | addr;
+			combined_address = combined_address & mask;
+			combined_address = combined_address | (is_last << 31);
+
+			combined = combined & mask;
+			combined = combined | (is_last << 31);
 
 			*(arm_data_ptr) = combined;
 			*(arm_data2_ptr) = combined_address;
@@ -554,7 +566,7 @@ void *SERVICE_CALC()
 		}
 		free(pixels);
 	}
-	printf("DONE CALCULATING\n");
+	printf("DONE WITH EVERYTHING\n");
 
 
 	// Open the file for writing

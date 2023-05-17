@@ -561,7 +561,7 @@ endgenerate
 // assign hex3_hex0[3:0] = state;
 // assign hex3_hex0[7:4] = mw_count[3:0];
 // assign hex3_hex0[11:8] = mr_count[3:0];
-assign hex3_hex0[3:0] = sv_debug_count[5:0];
+// assign hex3_hex0[3:0] = sv_debug_count[5:0];
 assign hex3_hex0[11:4] = sv_debug_count[31:24];
 
 
@@ -579,7 +579,7 @@ always@(posedge CLOCK_50) begin
 		state <= 1;
 	end 
 	else if (state == 1) begin 
-		mw_reset <= 0;
+		mw_reset <= 0;	
 		state <= 2;
 	end 
 	else if (state == 2) begin 
