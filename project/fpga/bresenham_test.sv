@@ -85,7 +85,7 @@ bresenham DUT   (.clk(clk_50),
                 .x(testbench_xout),
                 .y(testbench_yout),
                 .done(done),
-                .enable(ack)
+                .enable(1)
                 );
     
 endmodule

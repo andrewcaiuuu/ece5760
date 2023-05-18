@@ -259,16 +259,7 @@ In addition, the pixel coordinates needed could span a wide range of x,y values.
 
 Consider these as a subset of the chosen lines loaded into the solvers, it is not easy to decide on a subdividing scheme for the memory.
 
-In the end, we stored two copies of the image inside M10k memory using half of the pixel depth. 
-<div align="center">
-  <figure>
-    <img src="mem_usage.png" alt="mem" width="600">
-  </figure>
-</div>
-
-One M10k is divided row wise, so every row can be read in parallel, with one address per row.
-
-The other M10k is divided column wise, so every column can be read in parallel, with one address per column.
+We eventually stored the image in a row major manner, with each block representing a row. All rows can be read out in parallel at once, and an address can be set for each row.
 
 <div align="center">
   <figure>
@@ -276,10 +267,39 @@ The other M10k is divided column wise, so every column can be read in parallel, 
   </figure>
 </div>
 
-At each clock cycle, the output from each Bresenham unit either differs in the x coordinate, or the y coordinate. Otherwise it is the same point. 
+From there, a best effort parallelization scheme is used, where at a current time step, it tries to execute as many points as possible. Each solvers x,y value is checked. For a given y coordinate, the x coordinate seen is set as the target value and used the set the address for the corresponding row. Only a single x coordinate can be chosen as the target for this scheme, so prioirity encoding is required- we are aware this is bad.
 
-Therefore, the memory address generation unit compares the current timestep x,y tuples and finds all the points that share a x coordinate with another point but differ in y. It will then assign these points to use the row major memory output, and it will set the address of the respective row major blocks corresponding to the different y values to be the shared x value.
-
-It then finds all the points that share a y coordinate with another point but differ in x. It will then assign these points to use the row major memory output, and it will set the address of the respective row major blocks corresponding to the different y values to be the shared x value.
+For the previously found y coordinate values, all those whose x coordinate matches the target are enabled, and allowed to increment, and they are assigned their corresponding row based on y coordinate. This can be done while waiting for memory latency. When all the solvers output done, the system can move on.
 
 
+**This is not a good parallelization scheme for our FPGA**
+
+It involves very long combinational delays from prioirity encoding, lots of hardware for comparison, and it is not always able to execute every point.
+
+
+Even so, the final result is still much faster than the sequential C implementation, even accounting for memory transfers.
+
+Unfortunately, time permitting, this was the only thing that worked.
+
+### Other Ideas
+**Split along image space**
+-For a given (x1,y1), (x2,y2) pair, each solver is responsible outputting whether each pixel in its region is on the line. If the pixel lies on the line, the reduction at that particular pixel is computed, which can later be summed. Bresenham cannot tell you whether a particular (x,y) lies on the line without undergoing the entire search process, but solving the line equation can. By utilizing DSP units and pipelining, this could be a doable operation, especially because many regions can be immediatly ruled out without complex calculation. Now, the memory can be easily be divided between the different solvers. 
+
+**Pipelining**
+-There are several potential opportunities to pipeline the algorithm instead of relying on spatial/ inherant algorithm parallelism. 
+
+## Results of the design
+<div align="center">
+  <figure>
+    <img src="bresenham_wave.png" alt="bs" width="1000">
+    <figcaption> Bresenham Waveform</figcaption>
+  </figure>
+</div>
+
+In the above wave form, the x and y coordinates can be seen changing. This verilog Bresenham module was tested against C implementations for correctness, and is also able to stall.
+
+| Image          | Execution Time (C) | Execution Time (FPGA) |
+| -------        | -----              | -----                 |
+| Audrey Hepburn | 100                |                       |
+| Butterfly      | 120   |
+| Jellyfish      | 130   |
