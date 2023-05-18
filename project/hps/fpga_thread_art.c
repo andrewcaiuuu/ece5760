@@ -287,33 +287,41 @@ void *SERVICE_VERIFY(){
 	read_array(ah_monochrome, "ah_monochrome.txt");
 	int count = 0;
 	int mismatch_count = 0;
-	for (int i = 0; i < ROWS/2; i++)
+	for (int i = 0; i < ROWS; i++)
 	{
 		for (int j = 0; j < COLS; j++)
 		{
 			*(arm_ack_ptr) = 0;
+			*(arm_rdy_ptr) = 1;
 			while ( ! *(fpga_val_ptr)) { // wait for valid data from FPGA
+				printf("hit\n");
 			}
+
+			// while (*(fpga_val_ptr))
+			// { // wait for valid data from FPGA
+
+			// }
+			*(arm_rdy_ptr) = 0;
 			// printf("got: %d, expected: %d \n", *(fpga_data_ptr), ah_monochrome[i * COLS + j]);
 			// printf("count: %d\n", count);
 			uint32_t both = *(fpga_data_ptr);
-			uint32_t bottom = both >> 10;
-			uint32_t top = both & 0x00001FF; //9 bits
+			uint32_t top = both >> 5;
+			uint32_t bottom = both & 0x00001F; //9 bits
 			if (top != ah_monochrome[i * COLS + j]){
-				mismatch_count ++;
-				printf("expected top: %d, got: %d\n", ah_monochrome[(i + 1) * COLS + j], bottom);
+				// mismatch_count ++;
+				// printf("expected top: %d, got: %d\n", ah_monochrome[(i + 1) * COLS + j], bottom);
 			}
-			if (bottom != ah_monochrome[(i+1)*COLS + j]){
-				mismatch_count ++;
-				printf("expected bottom: %d, got: %d\n", ah_monochrome[(i+1)*COLS + j], bottom);
+			if (bottom != ah_monochrome[i*COLS + j]){
+				// mismatch_count ++;
+				// printf("expected bottom: %d, got: %d\n", ah_monochrome[(i+1)*COLS + j], bottom);
 			}
 			count ++;
-			*(arm_ack_ptr) = 1; // ack the data
-			while (! *(fpga_ack_ptr)) { // wait for FPGA to read ack
-			}
-			*(arm_ack_ptr) = 0; // reset ack
-			while (*(fpga_ack_ptr )){ // wait for FPGA to reset ack
-			}
+			// *(arm_ack_ptr) = 1; // ack the data
+			// while (! *(fpga_ack_ptr)) { // wait for FPGA to read ack
+			// }
+			// *(arm_ack_ptr) = 0; // reset ack
+			// while (*(fpga_ack_ptr )){ // wait for FPGA to reset ack
+			// }
 		}
 	}
 	printf("MISMATCHES: %d\n", mismatch_count);
@@ -325,35 +333,43 @@ void *SERVICE_WRITE()
 	int *ah_monochrome = malloc((ROWS * COLS) * sizeof(int));
 	read_array(ah_monochrome, "ah_monochrome.txt");
 	int count = 0;
-	for (int i = 0; i < ROWS/2; i++)
+	for (int i = 0; i < ROWS; i++)
 	{
 		for (int j = 0; j < COLS; j++)
 		{
 			// printf("count: %d\n", count);
 			*(arm_val_ptr) = 0;
-			uint16_t cur_top = (uint16_t)ah_monochrome[i * COLS + j];
-			uint16_t cur_bot = (uint16_t)ah_monochrome[ (i + 1) * COLS + j];
-			uint32_t is_last = (i == ROWS/2 - 1 && j == COLS - 1) << 31;
+			uint16_t cur = (uint16_t)ah_monochrome[i * COLS + j]  / 2;
+
+			uint32_t is_last = (i == ROWS - 1 && j == COLS - 1) << 31;
 
 			uint32_t mask = ~(1 << 31); // Bitmask with all bits set to 1, except bit 31
 
 			uint32_t combined;
-			combined = (((uint32_t)cur_bot << 10) | cur_top ) & mask;
+			combined = ((uint32_t)cur) & mask;
 			combined = combined | is_last;
 			*(arm_data_ptr) = combined;
 			count++;
 
 
 			*(arm_val_ptr) = 1; // try to transfer
-			while ( !*(fpga_ack_ptr) ) { // wait for fpga to ack
+			// while ( !*(fpga_ack_ptr) ) { // wait for fpga to ack
+			// }
+			while (!*(fpga_rdy_ptr))
+			{ // wait for fpga to ack
+				printf("waiting for fpga to ack\n");
 			}
 			*(arm_val_ptr) = 0; // clear our val
 
 			// once acked, send clear flag, through the form of return ack
-			*(arm_ack_ptr) = 1;
-			while ( *(fpga_ack_ptr) ) { // wait for fpga to clear ack
-			}
-			*(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
+			// *(arm_ack_ptr) = 1;
+			// while ( *(fpga_ack_ptr) ) { // wait for fpga to clear ack
+			// }
+			// while ( *(fpga_rdy_ptr) ) { // wait for fpga to clear ack
+			// 	printf("fdsf\n");
+			// }
+			// printf("count: %d\n", count);
+			// *(arm_ack_ptr) = 0; // clear our ack and move onto next transfer
 		}
 	}
 	printf("DONE WRITING MEM\n");

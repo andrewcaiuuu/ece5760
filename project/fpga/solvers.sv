@@ -104,8 +104,7 @@ integer rr, ii, jj, rrr, kk, iii;
 assign debug_count[5:0] = state;
 assign debug_count[31:24] = read_counter;
 
-logic [10:0] want_pos;
-logic [10:0] want_neg;
+logic [10:0] want;
 logic [39:0] hit;
 logic direction;
 
@@ -121,8 +120,7 @@ always @(posedge clk) begin
         state <= 0;
         read_index <= 0;
         group_first <= 1;
-        want_pos <= 0;
-        want_neg <= 0;
+        want  <= 0;
         hit <= 0;
         fpga_val <= 0;
         fpga_ack <= 0;
@@ -146,9 +144,6 @@ always @(posedge clk) begin
             group_last <= arm_data[31];
             group_first <= 0;
             if (group_first) begin 
-                // want <= arm_data[8:0]; // set want to x0
-                want_pos <= arm_data[8:0]; // set want to x0
-                want_neg <= arm_data[8:0]; // set want to x0
                 x0 <= arm_data[8:0];
                 y0 <= arm_data[17:9];
             end 
@@ -205,10 +200,8 @@ always @(posedge clk) begin
     end 
     else if (state == 6) begin // BRESENHAM SOLVERS RUNNING
         state <= 7;
-        // image_mem_addr <= xs[want];
-        for (iii = 0; iii<40; iii=iii+1)  begin 
-            
-        end 
+        image_mem_addr <= xs[want];
+        which_mem <= ys[want] >> 1;
         if (dones[want]) begin 
             state <= 6;
             want <= want + 1;
