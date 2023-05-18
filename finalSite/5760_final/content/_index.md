@@ -244,6 +244,14 @@ As the ARM gets best endpoints, it saves them in a list that is later written ou
   </figure>
 </div>
 
+The above diagrams show the individual modules that the solver unit utilizes. At each clock cycle after being reset, the Bresenham Module is able to output the next x,y pair. The entire solver unit as a whole can be enabled and disabled. When disabled, the Bresenham Unit inside the solver holds its current x,y point until it is enabled again. This is important later on. 
+
+Another module is responsible for forming the memory addresses for a given x,y pair, and after waiting the memory latency, the solver unit gets its pixel value back. 
+
+The penalty computation only involves bit shifts and addition/subtraction, so it can be done combinationally after the pixel value is returned.
+
+All the penalty reductions for a given line are summed up, and at the end, the x,y endpoint of the best reduction is sent back to the ARM.
+
 ### Memory Layout
 The greatest challenge with this project was managing the memory layout.
 
@@ -270,6 +278,8 @@ We eventually stored the image in a row major manner, with each block representi
 From there, a best effort parallelization scheme is used, where at a current time step, it tries to execute as many points as possible. Each solvers x,y value is checked. For a given y coordinate, the x coordinate seen is set as the target value and used the set the address for the corresponding row. Only a single x coordinate can be chosen as the target for this scheme, so prioirity encoding is required- we are aware this is bad.
 
 For the previously found y coordinate values, all those whose x coordinate matches the target are enabled, and allowed to increment, and they are assigned their corresponding row based on y coordinate. This can be done while waiting for memory latency. When all the solvers output done, the system can move on.
+
+There was not enough room in the end to also store the weighting information, so it was not used in the algorithm.
 
 
 **This is not a good parallelization scheme for our FPGA**
@@ -298,8 +308,53 @@ Unfortunately, time permitting, this was the only thing that worked.
 
 In the above wave form, the x and y coordinates can be seen changing. This verilog Bresenham module was tested against C implementations for correctness, and is also able to stall.
 
-| Image          | Execution Time (C) | Execution Time (FPGA) |
+| Image          | Execution Time (C) | Execution Time (FPGA)  |
 | -------        | -----              | -----                 |
-| Audrey Hepburn | 100                |                       |
-| Butterfly      | 120   |
-| Jellyfish      | 130   |
+| Audrey Hepburn | 9.93 seconds       |   1.73 seconds          |
+| Butterfly      | 10.02 seconds       |   1.94 seconds     |
+| Jellyfish      | 11.22 seconds       |   1.93 seconds         |
+
+
+The execution time is affected by the number of lines the algorithm chooses to draw, the number of lines is increases for images from the top to the bottom.
+
+
+The accuracy of the system was initially affected by integer overflow, however after implementing penalty calculation using larger values that the base image depth this was no longer an issue.
+
+There were no safety concerns with our project.
+
+The usability could be improved by offering a direct draw to VGA feature feature, however the export of final hook pairs to a text file allows for greater flexibility.
+
+<figure style="display: inline-block;">
+  <img src="butterfly_output_100.jpg" alt="Alt text" width="500">
+  <figcaption style="text-align:center;"> no weights 480x480</figcaption>
+</figure>
+
+<figure style="display: inline-block;">
+  <img src="out.png" alt="Alt text" width="500">
+  <figcaption style="text-align:center;"> no weights 480x480</figcaption>
+</figure>
+
+<figure style="display: inline-block;">
+  <img src="ah_100.jpg" alt="Alt text" width="500">
+  <figcaption style="text-align:center;"> with weights 480x480</figcaption>
+</figure>
+
+<figure style="display: inline-block;">
+  <img src="jellyfish.jpg" alt="Alt text" width="500">
+  <figcaption style="text-align:center;"> no weights 480x480</figcaption>
+</figure>
+
+
+## Conclusions
+The design successfully accelerated the sequential C implementation, but was not as fleshed out it could have been.
+
+The main holdup in development was coming up with an efficient parallelization scheme given the memory limitations. In the future, it would be better to spend more time in the planning stage with pencil and paper and get a concrete implementation plan before starting.
+
+For intellectual property considerations, we credit [this](https://github.com/callummcdougall/computational-thread-art) github for providing the fundamental algorithm.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/fLD4P5WjF-0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
+
+## Appendix A
+"The group does not approve the video for inclusion on the course youtube channel."
+

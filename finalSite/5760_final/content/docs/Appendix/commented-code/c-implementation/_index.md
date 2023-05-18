@@ -1,4 +1,3 @@
-# C implementation
 ``` {linenos=inline}
 // compile with gcc thread_art.c -o out -O2 -lm -std=c99
 #include <stdio.h>

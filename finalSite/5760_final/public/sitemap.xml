@@ -12,9 +12,15 @@
   </url><url>
     <loc>/docs/appendix/commented-code/hps/</loc>
   </url><url>
-    <loc>/docs/appendix/commented-code/verilog-implementation/top-level/</loc>
+    <loc>/docs/appendix/commented-code/verilog-implementation/bresenham/</loc>
   </url><url>
-    <loc>/docs/appendix/gallery/</loc>
+    <loc>/docs/appendix/commented-code/verilog-implementation/memory-verifier/</loc>
+  </url><url>
+    <loc>/docs/appendix/commented-code/verilog-implementation/memory-writer/</loc>
+  </url><url>
+    <loc>/docs/appendix/commented-code/verilog-implementation/solvers/</loc>
+  </url><url>
+    <loc>/docs/appendix/commented-code/verilog-implementation/top-level/</loc>
   </url><url>
     <loc>/categories/</loc>
   </url><url>

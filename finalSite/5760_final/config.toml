@@ -6,8 +6,10 @@ baseURL = "/"
 BookSearch = true
 
 [markup]
+  [markup.goldmark]
     [markup.goldmark.renderer]
-		unsafe = true
+      unsafe = true
+
 
 [params]
   js = ["js/prism.js"]

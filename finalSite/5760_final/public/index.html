@@ -5,8 +5,8 @@
   <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="FPGA Accelerated Thread Art#Project Introduction#We create a parallel implementation of &ldquo;thread art&rdquo; algorithm that simulates rendering an image by wrapping single piece of string around hooks placed in a circle.
-Example Execution Progress 20% 40% 60% 80% 100% ref High Level Design#We utilize a simplified version of the algorithm from this github repository.
-There are many similar implementations, but we found that the optimizations introduced here resulted in better quality images.">
+Example Execution Progress 20% 40% 60% 80% 100% ref High Level Design#Line Choice#The final design utilizes a simplified version of the algorithm from this github repository.
+There are many similar implementations, but the optimizations introduced by the author of this github repository resulted in better quality images.">
 <meta name="theme-color" content="#FFFFFF">
 <meta name="color-scheme" content="light dark"><meta property="og:title" content="Home" />
 <meta property="og:description" content="" />
@@ -17,7 +17,7 @@ There are many similar implementations, but we found that the optimizations intr
 <link rel="icon" href="./favicon.png" type="image/x-icon">
 <link rel="stylesheet" href="./book.min.33a48f5432973b8ff9a82679d9e45d67f2c15d4399bd2829269455cfe390b5e8.css" >
   <script defer src="./flexsearch.min.js"></script>
-  <script defer src="./en.search.min.b0c4aa5971f272ad643ad39c957fd01ebe13ff1f81c0257985e2dc61215b880b.js" ></script>
+  <script defer src="./en.search.min.2e0abd61cc00a368c5b6220fd4fc701ba7daa520efa490a3d9819a57cea4c5dd.js" ></script>
 <link rel="alternate" type="application/rss+xml" href="./index.xml" title="ECE 5760 Final Project" />
 <!--
 Made with Book Theme
@@ -115,6 +115,78 @@ https://github.com/alex-shpak/hugo-book
   
 
   
+    <a href="./docs/appendix/commented-code/verilog-implementation/bresenham/" class="">Bresenham</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="./docs/appendix/commented-code/verilog-implementation/memory-verifier/" class="">Memory Verifier</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="./docs/appendix/commented-code/verilog-implementation/memory-writer/" class="">Memory Writer</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="./docs/appendix/commented-code/verilog-implementation/solvers/" class="">Solvers</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
     <a href="./docs/appendix/commented-code/verilog-implementation/top-level/" class="">Top Level</a>
   
 
@@ -156,7 +228,7 @@ https://github.com/alex-shpak/hugo-book
   
 
   
-    <span>Hps</span>
+    <a href="./docs/appendix/commented-code/hps/" class="">Hps</a>
   
 
           
@@ -168,19 +240,6 @@ https://github.com/alex-shpak/hugo-book
       
     
   </ul>
-
-        </li>
-      
-    
-      
-        <li>
-          
-  
-  
-
-  
-    <a href="./docs/appendix/gallery/" class="">Gallery</a>
-  
 
         </li>
       
@@ -243,8 +302,25 @@ https://github.com/alex-shpak/hugo-book
 <nav id="TableOfContents">
   <ul>
     <li><a href="#project-introduction">Project Introduction</a></li>
-    <li><a href="#high-level-design">High Level Design</a></li>
-    <li><a href="#locis-suis-novi-cum-suoque-decidit-eadem">Locis suis novi cum suoque decidit eadem</a></li>
+    <li><a href="#high-level-design">High Level Design</a>
+      <ul>
+        <li><a href="#line-choice">Line Choice</a></li>
+        <li><a href="#bresenham">Bresenham</a></li>
+      </ul>
+    </li>
+    <li><a href="#programhardware-design">Program/hardware design</a>
+      <ul>
+        <li><a href="#communication">Communication</a></li>
+        <li><a href="#high-level-view">High Level View</a></li>
+        <li><a href="#solver-unit">Solver Unit</a></li>
+        <li><a href="#bresenham-unit">Bresenham Unit</a></li>
+        <li><a href="#memory-layout">Memory Layout</a></li>
+        <li><a href="#other-ideas">Other Ideas</a></li>
+      </ul>
+    </li>
+    <li><a href="#results-of-the-design">Results of the design</a></li>
+    <li><a href="#conclusions">Conclusions</a></li>
+    <li><a href="#appendix-a">Appendix A</a></li>
   </ul>
 </nav>
 
@@ -300,32 +376,324 @@ https://github.com/alex-shpak/hugo-book
   High Level Design
   <a class="anchor" href="#high-level-design">#</a>
 </h2>
-<p>We utilize a simplified version of the algorithm from <a href="https://github.com/callummcdougall/computational-thread-art">this</a> github repository.</p>
-<p>There are many similar implementations, but we found that the optimizations introduced here resulted in better quality images.</p>
+<h3 id="line-choice">
+  Line Choice
+  <a class="anchor" href="#line-choice">#</a>
+</h3>
+<p>The final design utilizes a simplified version of the algorithm from <a href="https://github.com/callummcdougall/computational-thread-art">this</a> github repository.</p>
+<p>There are many similar implementations, but the optimizations introduced by the author of this github repository resulted in better quality images.</p>
 <p>At a high level, all the different algorithms aim to try possible lines from a given starting hook, and pick the resulting line that results in greatest similarity to the original image.</p>
 <p>In order to compute similarity, a penalty is formally defined below as:</p>
 <p><img src="eq1.png" alt="Equation Description" /></p>
 <p>For ease of computation, images are first inverted, with 255 representing complete darkness, and 0 representing complete brightness.</p>
-<p>A paramterized value <em>Line Darkness</em> set as 150 by default represents the darkness of a line. If a line is drawn through a sets of points, all points in the set have their inverted pixel value subtracted by 150.</p>
+<p>A paramterized value <em>LINE DARKNESS</em> set as 150 by default represents the darkness of a line. If a line is drawn through a sets of points, all points in the set have their inverted pixel value subtracted by 150.</p>
 <p><em><strong>p<sub>i</sub></strong></em> represents the inverted pixel value.</p>
 <p><em><strong>w<sub>i</sub></strong></em> represents the corresponding weight value, which applies a multiplier between 0 and 1, allowing for some pixels to contribute more to overall penalty and therefore be prioritized.</p>
 <p><em><strong>L</strong></em> represents the lightness penalty, another value between 0 and 1 that allows for negative values to contribute less to overall penalty, therefore increasing the algorithms willingness to draw more lines.</p>
-<p>At each step, the algorithm computes possible lines from a starting point and calculates the penalty through those points with (pixel values subtracted by <em>Line Darkness</em>) and without (original pixel values). It then selects the line the reduces the penalty by the greatest amount.</p>
-<p>From there, the chosen point because the starting point at the next step.</p>
-<p>The most important additions here are pixel weightings and parameterized lightness penalty. This allows for more detailed images.</p>
-<pre><code>var panel = ram_design;
-if (backup + system) {
-    file.readPoint = network_native;
-    sidebar_engine_device(cell_tftp_raster,
-            dual_login_paper.adf_vci.application_reader_design(
-            graphicsNvramCdma, lpi_footer_snmp, integer_model));
-}
-</code></pre>
-<h2 id="locis-suis-novi-cum-suoque-decidit-eadem">
-  Locis suis novi cum suoque decidit eadem
-  <a class="anchor" href="#locis-suis-novi-cum-suoque-decidit-eadem">#</a>
+<p>At each step, the algorithm computes possible lines from a starting point and calculates the penalty through those points with (pixel values subtracted by <em>LINE DARKNESS</em>) and without (original pixel values). It then selects the line the reduces the penalty by the greatest amount.</p>
+<p>From there, the chosen point becomes the starting point at the next step, and the process is repeated for either a predetermined number, or until no line will result in reduction of penalty.</p>
+<p>In testing, it was found to be easier to just run for a predetermined number of lines multiple times to simplify the logic.</p>
+<p>This results a O(N^2) problem, where N is number of hooks. This is slow, but there is a large amount of parallelism because each line&rsquo;s calculation does not depend on any other lines. Provided the necessary memory bandwidth, the image values of points along each line can be read in parallel, allowing for parallel penalty computation.</p>
+<p>Furthermore, it is not necessary to consider every other hook from a starting hook. The image quality does not diminish if a suitable random subset of the hooks are considered at each step. In our testing, only considering half of the total number of hooks available did not result in any difference in image quality. The result of this optimization is time saving in a software implementation and space saving in a hardware implementation. A python-styled psuedocode implementation is shown below</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>hook_list <span style="color:#f92672">=</span> generate_hook_list() <span style="color:#75715e"># list containing (x,y) tuples representing hooks</span>
+</span></span><span style="display:flex;"><span>starting_hook <span style="color:#f92672">=</span> hook_list[rand()] <span style="color:#75715e"># start from random hook</span>
+</span></span><span style="display:flex;"><span>cur_hook <span style="color:#f92672">=</span> starting_hook
+</span></span><span style="display:flex;"><span>result <span style="color:#f92672">=</span> []
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> (i <span style="color:#f92672">in</span> range(NUM_LINES)):
+</span></span><span style="display:flex;"><span>  chosen <span style="color:#f92672">=</span> generate_randoms(hook_list, TIME_SAVER) <span style="color:#75715e"># consider TIME_SAVER hooks</span>
+</span></span><span style="display:flex;"><span>  best_reduction <span style="color:#f92672">=</span> Integer<span style="color:#f92672">.</span>MIN
+</span></span><span style="display:flex;"><span>  chosen_hook
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (hook <span style="color:#f92672">in</span> chosen): <span style="color:#75715e"># iterate through chosen hooks</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> calculate_reduction(cur_hook, hook)  <span style="color:#f92672">&gt;</span> best_reduction:
+</span></span><span style="display:flex;"><span>      best_reduction <span style="color:#f92672">=</span> calculate_reduction(starting_hook, hook)
+</span></span><span style="display:flex;"><span>      chosen_hook <span style="color:#f92672">=</span> hook
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e"># subtract DARKNESS value from points that the best line goes through </span>
+</span></span><span style="display:flex;"><span>  update_image() 
+</span></span><span style="display:flex;"><span>  result<span style="color:#f92672">.</span>append ((cur_hook, chosen_hook)) <span style="color:#75715e"># add hook tuple to result list</span>
+</span></span><span style="display:flex;"><span>  cur_hook <span style="color:#f92672">=</span> chosen_hook
+</span></span></code></pre></div><h3 id="bresenham">
+  Bresenham
+  <a class="anchor" href="#bresenham">#</a>
+</h3>
+<div align="center">
+  <figure>
+    <img src="300px-Bresenham.png" alt="br" width="300">
+    <figcaption>Visualization</figcaption>
+  </figure>
+</div>
+One important piece of this algorithm that has not yet been discussed is the calculation of pixels through two pixels. In order to avoid the speed penalty associated with the usage floating point numbers, the Bresenham Line Algorithm is utilized.
+<p>The key concept of Bresenham&rsquo;s line algorithm is that it keeps a accumlating error term that decides whether to increment the x coordinate, the y coordinate, or both.</p>
+<p>The Bresenham algorithm can be outlined as follows:</p>
+<ol>
+<li>
+<p>The difference between the start and end points on both axes (dx, dy) is calculated.</p>
+</li>
+<li>
+<p>The error err is initially set to dx - dy. If dx is greater than dy, then err is positive, and the line is more horizontal than vertical. If dy is greater than dx, then err is negative, and the line is more vertical than horizontal.</p>
+</li>
+<li>
+<p>For each step along the line, the algorithm decides whether to increment the x-coordinate, the y-coordinate, or both, based on the error term.</p>
+</li>
+<li>
+<p>The variable e2 is set to 2 * err. This is done because the algorithm compares 2*err with dx and -dy, instead of comparing err with 0.5 * dx and -0.5 * dy, which would require floating-point arithmetic. The reason we use the e2 term is explained below:</p>
+<p>Consider an arbitrary point (x,y) on the line, and suppose this point is represented by a pixel in the rasterization. Let y = mx + b be the equation of the line, where m is the slope. Note that m = dy/dx. Because (x,y) is on the line, we know that y = mx + b. Let e be the error term at (x,y). By definition, e is twice the vertical distance between the line at (x+1) and the midpoint between the pixels at (x+1, y) and (x+1, y+1). The y-coordinate of the line at x+1 is m*(x+1) + b. The y-coordinate of the midpoint is y + 0.5. So the vertical distance is m*(x+1) + b - (y + 0.5), and e = 2*(m*(x+1) + b - y - 0.5). Substitute y = mx + b into the equation for e, and we get e = 2*[(m*(x+1) + b) - (mx + b) - 0.5] = 2m.
+The <a href="https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm">wikipedia</a> article provides further explanation for this.</p>
+</li>
+<li>
+<p>Now, the decision comes down to comparing e2 &gt; -dy, e2 &lt; dx and e2 == dx.</p>
+<p>e2 &gt; -dy: When the error is greater than -dy, it means the line is above the midpoint between the two potential candidate pixels. So, the algorithm selects the pixel on the &ldquo;right&rdquo;, i.e., increments in the x-direction (x0 += sx) and the error err is updated (err -= dy).</p>
+<p>e2 &lt; dx: When the error is less than dx, it means the line is below the midpoint between the two potential candidate pixels. So, the algorithm selects the pixel &ldquo;above&rdquo;, i.e., increments in the y-direction (y0 += sy) and the error err is updated again (err += dx).</p>
+<p>e2 == dx: In this case, the algorithm needs to move diagonally, which it does by moving one step in both the x and y directions.</p>
+</li>
+<li>
+<p>Once the endpoints are reached, the algorithm terminates.</p>
+</li>
+</ol>
+<p>Below is a python styled psuedocode implementation.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>x0, y0 <span style="color:#f92672">=</span> p0<span style="color:#f92672">.</span>x, p0<span style="color:#f92672">.</span>y
+</span></span><span style="display:flex;"><span>x1, y1 <span style="color:#f92672">=</span> p1<span style="color:#f92672">.</span>x, p1<span style="color:#f92672">.</span>y
+</span></span><span style="display:flex;"><span>dx <span style="color:#f92672">=</span> abs(x1 <span style="color:#f92672">-</span> x0)
+</span></span><span style="display:flex;"><span>dy <span style="color:#f92672">=</span> abs(y1 <span style="color:#f92672">-</span> y0)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>sx <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> x0 <span style="color:#f92672">&lt;</span> x1 <span style="color:#66d9ef">else</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>sy <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">if</span> y0 <span style="color:#f92672">&lt;</span> y1 <span style="color:#66d9ef">else</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>err <span style="color:#f92672">=</span> dx <span style="color:#f92672">-</span> dy
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">while</span> <span style="color:#66d9ef">True</span>:
+</span></span><span style="display:flex;"><span>    point <span style="color:#f92672">=</span> (x0, y0)
+</span></span><span style="display:flex;"><span>    pixels<span style="color:#f92672">.</span>append(point)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (x0, y0) <span style="color:#f92672">==</span> (x1, y1):
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    e2 <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">*</span> err
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> e2 <span style="color:#f92672">&gt;</span> <span style="color:#f92672">-</span>dy:
+</span></span><span style="display:flex;"><span>        err <span style="color:#f92672">-=</span> dy
+</span></span><span style="display:flex;"><span>        x0 <span style="color:#f92672">+=</span> sx
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> e2 <span style="color:#f92672">&lt;</span> dx:
+</span></span><span style="display:flex;"><span>        err <span style="color:#f92672">+=</span> dx
+</span></span><span style="display:flex;"><span>        y0 <span style="color:#f92672">+=</span> sy
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> e2 <span style="color:#f92672">==</span> dx:
+</span></span><span style="display:flex;"><span>        err <span style="color:#f92672">-=</span> dy;
+</span></span><span style="display:flex;"><span>        x0 <span style="color:#f92672">+=</span> sx;
+</span></span><span style="display:flex;"><span>        err <span style="color:#f92672">+=</span> dx;
+</span></span><span style="display:flex;"><span>        y0 <span style="color:#f92672">+=</span> sy;
+</span></span></code></pre></div><p>With these two components, the full algorithm can be realized, and we first created a sequential C implementation to better understand the algorithm and provide a baseline to compare against. The final output is a list of point pair connections that can then be drawn onto the VGA using the draw line function, or read using a Python script for saving as an image.</p>
+<p>As far as we know, there are no existing patents for this algorithm.</p>
+<h2 id="programhardware-design">
+  Program/hardware design
+  <a class="anchor" href="#programhardware-design">#</a>
 </h2>
-<p>Idmoniae ripis, at aves, ali missa adest, ut <em>et autem</em>, et ab?</p>
+<h3 id="communication">
+  Communication
+  <a class="anchor" href="#communication">#</a>
+</h3>
+<p>In order to take advantage of each platforms inherent advantages, we divided the work between the ARM and the FPGA. The first step to dividing the work is a reliable data transfer protocol between the ARM and the FPGA.</p>
+<p>When ARM sending data to FPGA
+
+
+<script src="./mermaid.min.js"></script>
+
+  <script>mermaid.initialize({
+  "flowchart": {
+    "useMaxWidth":true
+  },
+  "theme": "default"
+}
+)</script>
+
+
+
+
+<p class="mermaid">
+sequenceDiagram
+    ARM->>FPGA: ARM_VAL
+    FPGA-->>ARM: FPGA_ACK
+    ARM-)FPGA: ARM_DATA
+</p>
+</p>
+<p>When FPGA sending data to ARM
+
+
+<p class="mermaid">
+sequenceDiagram
+    FPGA->>ARM: FPGA_VAL
+    ARM-->>FPGA: ARM_ACK
+    FPGA-)ARM: FPGA_DATA
+</p>
+</p>
+<p>After sending a valid transaction, the sender waits for the ACK, and then drops their VAL signal. The reciever asserts their ACK until the VAL drops again, and then drops their ACK.</p>
+<p>All communication between the ARM and the FPGA is handled using this scheme.</p>
+<h3 id="high-level-view">
+  High Level View
+  <a class="anchor" href="#high-level-view">#</a>
+</h3>
+<p>With this protocol defined, a high level state diagram of the design is illustrated below:</p>
+<p>
+
+<p class="mermaid">
+stateDiagram
+    State1: ARM write image data to FPGA
+    State2: ARM calculate (x,y) values of all hooks
+    State3: ARM choose starting hook randomly, sets as cur point
+    State4: ARM randomly choose N_SOLVER endpoints
+    note right of State8
+      Repeat Sequence NUM_LINES times
+    end note
+    State5: ARM write [(starting point), (ending point)] pairs to FPGA solvers
+    State6: ARM wait for FPGA solvers to finish computation
+    State7: ARM recieve best endpoint from FPGA, sets as cur point
+    State8: ARM write updated image data to FPGA
+    State1 --> State2
+    State2 --> State3
+    State3 --> State4
+    State4 --> State5
+    State5 --> State6
+    State6 --> State7
+    State7 --> State8
+    State8 --> State4
+</p>
+
+The FPGA is only used for penalty computation.</p>
+<p>As the ARM gets best endpoints, it saves them in a list that is later written out as txt/csv file.</p>
+<h3 id="solver-unit">
+  Solver Unit
+  <a class="anchor" href="#solver-unit">#</a>
+</h3>
+<div align="center">
+  <figure>
+    <img src="SolverBlockDiagram.png" alt="br" width="600">
+    <figcaption> Solver Compute State Connections</figcaption>
+  </figure>
+</div>
+<div align="center">
+  <figure>
+    <img src="SolverFSM.png" alt="solver" width="600">
+    <figcaption> Solver FSM</figcaption>
+  </figure>
+</div>
+<h3 id="bresenham-unit">
+  Bresenham Unit
+  <a class="anchor" href="#bresenham-unit">#</a>
+</h3>
+<div align="center">
+  <figure>
+    <img src="BresenhamFSM.png" alt="br" width="600">
+    <figcaption> Bresenham FSM</figcaption>
+  </figure>
+</div>
+<p>The above diagrams show the individual modules that the solver unit utilizes. At each clock cycle after being reset, the Bresenham Module is able to output the next x,y pair. The entire solver unit as a whole can be enabled and disabled. When disabled, the Bresenham Unit inside the solver holds its current x,y point until it is enabled again. This is important later on.</p>
+<p>Another module is responsible for forming the memory addresses for a given x,y pair, and after waiting the memory latency, the solver unit gets its pixel value back.</p>
+<p>The penalty computation only involves bit shifts and addition/subtraction, so it can be done combinationally after the pixel value is returned.</p>
+<p>All the penalty reductions for a given line are summed up, and at the end, the x,y endpoint of the best reduction is sent back to the ARM.</p>
+<h3 id="memory-layout">
+  Memory Layout
+  <a class="anchor" href="#memory-layout">#</a>
+</h3>
+<p>The greatest challenge with this project was managing the memory layout.</p>
+<p>Even though each solver can theoretically operate in parallel, they all need to read the same image data. Giving each solver their own memory would be the easiest solution, however, each solver does not know what points it needs until all Bresenham points have been calculated and giving each solver the entire image is both wasteful and not possible.</p>
+<p>In addition, the pixel coordinates needed could span a wide range of x,y values. The problems are illustrated below.</p>
+<div align="center">
+  <figure>
+    <img src="problem1.png" alt="pr" width="600">
+  </figure>
+</div>
+<p>Consider these as a subset of the chosen lines loaded into the solvers, it is not easy to decide on a subdividing scheme for the memory.</p>
+<p>We eventually stored the image in a row major manner, with each block representing a row. All rows can be read out in parallel at once, and an address can be set for each row.</p>
+<div align="center">
+  <figure>
+    <img src="row_column.png" alt="mem" width="300">
+  </figure>
+</div>
+<p>From there, a best effort parallelization scheme is used, where at a current time step, it tries to execute as many points as possible. Each solvers x,y value is checked. For a given y coordinate, the x coordinate seen is set as the target value and used the set the address for the corresponding row. Only a single x coordinate can be chosen as the target for this scheme, so prioirity encoding is required- we are aware this is bad.</p>
+<p>For the previously found y coordinate values, all those whose x coordinate matches the target are enabled, and allowed to increment, and they are assigned their corresponding row based on y coordinate. This can be done while waiting for memory latency. When all the solvers output done, the system can move on.</p>
+<p>There was not enough room in the end to also store the weighting information, so it was not used in the algorithm.</p>
+<p><strong>This is not a good parallelization scheme for our FPGA</strong></p>
+<p>It involves very long combinational delays from prioirity encoding, lots of hardware for comparison, and it is not always able to execute every point.</p>
+<p>Even so, the final result is still much faster than the sequential C implementation, even accounting for memory transfers.</p>
+<p>Unfortunately, time permitting, this was the only thing that worked.</p>
+<h3 id="other-ideas">
+  Other Ideas
+  <a class="anchor" href="#other-ideas">#</a>
+</h3>
+<p><strong>Split along image space</strong>
+-For a given (x1,y1), (x2,y2) pair, each solver is responsible outputting whether each pixel in its region is on the line. If the pixel lies on the line, the reduction at that particular pixel is computed, which can later be summed. Bresenham cannot tell you whether a particular (x,y) lies on the line without undergoing the entire search process, but solving the line equation can. By utilizing DSP units and pipelining, this could be a doable operation, especially because many regions can be immediatly ruled out without complex calculation. Now, the memory can be easily be divided between the different solvers.</p>
+<p><strong>Pipelining</strong>
+-There are several potential opportunities to pipeline the algorithm instead of relying on spatial/ inherant algorithm parallelism.</p>
+<h2 id="results-of-the-design">
+  Results of the design
+  <a class="anchor" href="#results-of-the-design">#</a>
+</h2>
+<div align="center">
+  <figure>
+    <img src="bresenham_wave.png" alt="bs" width="1000">
+    <figcaption> Bresenham Waveform</figcaption>
+  </figure>
+</div>
+<p>In the above wave form, the x and y coordinates can be seen changing. This verilog Bresenham module was tested against C implementations for correctness, and is also able to stall.</p>
+<table>
+<thead>
+<tr>
+<th>Image</th>
+<th>Execution Time (C)</th>
+<th>Execution Time (FPGA)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Audrey Hepburn</td>
+<td>9.93 seconds</td>
+<td>1.73 seconds</td>
+</tr>
+<tr>
+<td>Butterfly</td>
+<td>10.02 seconds</td>
+<td>1.94 seconds</td>
+</tr>
+<tr>
+<td>Jellyfish</td>
+<td>11.22 seconds</td>
+<td>1.93 seconds</td>
+</tr>
+</tbody>
+</table>
+<p>The execution time is affected by the number of lines the algorithm chooses to draw, the number of lines is increases for images from the top to the bottom.</p>
+<p>The accuracy of the system was initially affected by integer overflow, however after implementing penalty calculation using larger values that the base image depth this was no longer an issue.</p>
+<p>There were no safety concerns with our project.</p>
+<p>The usability could be improved by offering a direct draw to VGA feature feature, however the export of final hook pairs to a text file allows for greater flexibility.</p>
+<figure style="display: inline-block;">
+  <img src="butterfly_output_100.jpg" alt="Alt text" width="500">
+  <figcaption style="text-align:center;"> no weights 480x480</figcaption>
+</figure>
+<figure style="display: inline-block;">
+  <img src="out.png" alt="Alt text" width="500">
+  <figcaption style="text-align:center;"> no weights 480x480</figcaption>
+</figure>
+<figure style="display: inline-block;">
+  <img src="ah_100.jpg" alt="Alt text" width="500">
+  <figcaption style="text-align:center;"> with weights 480x480</figcaption>
+</figure>
+<figure style="display: inline-block;">
+  <img src="jellyfish.jpg" alt="Alt text" width="500">
+  <figcaption style="text-align:center;"> no weights 480x480</figcaption>
+</figure>
+<h2 id="conclusions">
+  Conclusions
+  <a class="anchor" href="#conclusions">#</a>
+</h2>
+<p>The design successfully accelerated the sequential C implementation, but was not as fleshed out it could have been.</p>
+<p>The main holdup in development was coming up with an efficient parallelization scheme given the memory limitations. In the future, it would be better to spend more time in the planning stage with pencil and paper and get a concrete implementation plan before starting.</p>
+<p>For intellectual property considerations, we credit <a href="https://github.com/callummcdougall/computational-thread-art">this</a> github for providing the fundamental algorithm.</p>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/fLD4P5WjF-0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+<h2 id="appendix-a">
+  Appendix A
+  <a class="anchor" href="#appendix-a">#</a>
+</h2>
+<p>&ldquo;The group does not approve the video for inclusion on the course youtube channel.&rdquo;</p>
 </article>
  
       
@@ -368,8 +736,25 @@ if (backup + system) {
 <nav id="TableOfContents">
   <ul>
     <li><a href="#project-introduction">Project Introduction</a></li>
-    <li><a href="#high-level-design">High Level Design</a></li>
-    <li><a href="#locis-suis-novi-cum-suoque-decidit-eadem">Locis suis novi cum suoque decidit eadem</a></li>
+    <li><a href="#high-level-design">High Level Design</a>
+      <ul>
+        <li><a href="#line-choice">Line Choice</a></li>
+        <li><a href="#bresenham">Bresenham</a></li>
+      </ul>
+    </li>
+    <li><a href="#programhardware-design">Program/hardware design</a>
+      <ul>
+        <li><a href="#communication">Communication</a></li>
+        <li><a href="#high-level-view">High Level View</a></li>
+        <li><a href="#solver-unit">Solver Unit</a></li>
+        <li><a href="#bresenham-unit">Bresenham Unit</a></li>
+        <li><a href="#memory-layout">Memory Layout</a></li>
+        <li><a href="#other-ideas">Other Ideas</a></li>
+      </ul>
+    </li>
+    <li><a href="#results-of-the-design">Results of the design</a></li>
+    <li><a href="#conclusions">Conclusions</a></li>
+    <li><a href="#appendix-a">Appendix A</a></li>
   </ul>
 </nav>
 

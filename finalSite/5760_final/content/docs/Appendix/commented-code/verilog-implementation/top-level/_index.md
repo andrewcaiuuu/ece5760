@@ -1,410 +1,818 @@
-# C implementation
 ``` {linenos=inline}
-// compile with gcc thread_art.c -o out -O2 -lm -std=c99
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <time.h>
 
-#define WHEEL_PIXEL_SIZE 1600
-#define N_HOOKS 160 // needs to be divisible by 2
-#define HOOK_PIXEL_SIZE 3
-#define ROWS 1600
-#define COLS 1600
-#define N_LINES 800
-#define LIGHTNESS_PENALTY 1 // defined in terms of right shifts
-#define DARKNESS 800
-#define TIME_SAVER 40 // defined as terms to actually consider
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-#ifndef INT_MIN
-#define INT_MIN -2147483648
-#endif
 
-// HELPER STUFF
-struct Tuple
-{
-    int x;
-    int y;
-};
+module DE1_SoC_Computer (
+    ////////////////////////////////////
+    // FPGA Pins
+    ////////////////////////////////////
 
-struct Node
-{
-    struct Tuple data;
-    struct Node *next;
-};
+    // Clock pins
+    CLOCK_50,
+    CLOCK2_50,
+    CLOCK3_50,
+    CLOCK4_50,
 
-struct LinkedList
-{
-    struct Node *head;
-    struct Node *tail;
-};
+    // ADC
+    ADC_CS_N,
+    ADC_DIN,
+    ADC_DOUT,
+    ADC_SCLK,
 
-struct LinkedList *initLinkedList()
-{
-    struct LinkedList *list = (struct LinkedList *)malloc(sizeof(struct LinkedList));
-    list->head = NULL;
-    list->tail = NULL;
-    return list;
-}
+    // Audio
+    AUD_ADCDAT,
+    AUD_ADCLRCK,
+    AUD_BCLK,
+    AUD_DACDAT,
+    AUD_DACLRCK,
+    AUD_XCK,
 
-void freeList(struct LinkedList *list)
-{
-    struct Node *current = list->head;
-    while (current != NULL)
-    {
-        struct Node *temp = current;
-        current = current->next;
-        free(temp);
-    }
-    free(list);
-}
+    // SDRAM
+    DRAM_ADDR,
+    DRAM_BA,
+    DRAM_CAS_N,
+    DRAM_CKE,
+    DRAM_CLK,
+    DRAM_CS_N,
+    DRAM_DQ,
+    DRAM_LDQM,
+    DRAM_RAS_N,
+    DRAM_UDQM,
+    DRAM_WE_N,
 
-void append(struct LinkedList *list, struct Tuple data)
-{
-    // allocate memory for the new node
-    struct Node *new_node = (struct Node *)malloc(sizeof(struct Node));
+    // I2C Bus for Configuration of the Audio and Video-In Chips
+    FPGA_I2C_SCLK,
+    FPGA_I2C_SDAT,
 
-    // set the data of the new node
-    new_node->data = data;
+    // 40-Pin Headers
+    GPIO_0,
+    GPIO_1,
+    
+    // Seven Segment Displays
+    HEX0,
+    HEX1,
+    HEX2,
+    HEX3,
+    HEX4,
+    HEX5,
 
-    // set the next pointer of the new node to NULL
-    new_node->next = NULL;
+    // IR
+    IRDA_RXD,
+    IRDA_TXD,
 
-    // if the list is empty, set the new node as the head and tail of the list
-    if (list->head == NULL)
-    {
-        list->head = new_node;
-        list->tail = new_node;
-    }
-    // otherwise, append the new node to the tail of the list
-    else
-    {
-        list->tail->next = new_node;
-        list->tail = new_node;
-    }
-}
+    // Pushbuttons
+    KEY,
 
-void print_list(struct LinkedList *list)
-{
-    struct Node *current = list->head;
-    int idx = 0;
-    while (current != NULL)
-    {
-        printf("idx %d: (%d, %d)\n", idx, current->data.x, current->data.y);
-        idx++;
-        current = current->next;
-    }
-}
+    // LEDs
+    LEDR,
 
-// END HELPER STUFF
+    // PS2 Ports
+    PS2_CLK,
+    PS2_DAT,
+    
+    PS2_CLK2,
+    PS2_DAT2,
 
-void read_array(int *array, char *path)
-{
-    // open the input file
-    FILE *fp = fopen(path, "r");
-    if (fp == NULL)
-    {
-        printf("Failed to open file \n");
-    }
-    int count = 0;
-    // read the integers from the file into the array
-    for (int i = 0; i < ROWS; i++)
-    {
-        for (int j = 0; j < COLS; j++)
-        {
-            int cur;
-            if (!fscanf(fp, "%d", &cur))
-            {
-                printf("FAIL");
-            }
-            count++;
-            array[i * COLS + j] = cur;
-        }
-    }
+    // Slider Switches
+    SW,
 
-    // close the input file
-    fclose(fp);
-    printf("count: %d\n", count);
-}
+    // Video-In
+    TD_CLK27,
+    TD_DATA,
+    TD_HS,
+    TD_RESET_N,
+    TD_VS,
 
-void generate_hooks_with_size(struct Tuple *xy) // generates points along a circle
-{
-    double r = (WHEEL_PIXEL_SIZE / 2.0) - 1.0;
-    double *theta = (double *)malloc((N_HOOKS) * sizeof(double));
-    double epsilon = asin(HOOK_PIXEL_SIZE / WHEEL_PIXEL_SIZE);
-    for (int i = 0; i < (N_HOOKS >> 1); i++)
-    {
-        double angle = (double)i / (double)(N_HOOKS >> 1) * (2.0 * M_PI);
-        theta[i * 2] = angle - epsilon;
-        theta[i * 2 + 1] = angle + epsilon;
-    }
-    for (int j = 0; j < N_HOOKS; j++)
-    {
-        struct Tuple point;
-        point.x = r * (1.0 + cos(theta[j])) + 0.5;
-        point.y = r * (1.0 + sin(theta[j])) + 0.5;
-        xy[j] = point;
-    }
-    free(theta);
-}
+    // VGA
+    VGA_B,
+    VGA_BLANK_N,
+    VGA_CLK,
+    VGA_G,
+    VGA_HS,
+    VGA_R,
+    VGA_SYNC_N,
+    VGA_VS,
 
-void through_pixels(struct Tuple p0, struct Tuple p1, struct LinkedList *pixels) 
-{
-    int x0 = p0.x;
-    int y0 = p0.y;
-    int x1 = p1.x;
-    int y1 = p1.y;
-    int dx = abs(x1 - x0);
-    int dy = abs(y1 - y0);
+    ////////////////////////////////////
+    // HPS Pins
+    ////////////////////////////////////
+    
+    // DDR3 SDRAM
+    HPS_DDR3_ADDR,
+    HPS_DDR3_BA,
+    HPS_DDR3_CAS_N,
+    HPS_DDR3_CKE,
+    HPS_DDR3_CK_N,
+    HPS_DDR3_CK_P,
+    HPS_DDR3_CS_N,
+    HPS_DDR3_DM,
+    HPS_DDR3_DQ,
+    HPS_DDR3_DQS_N,
+    HPS_DDR3_DQS_P,
+    HPS_DDR3_ODT,
+    HPS_DDR3_RAS_N,
+    HPS_DDR3_RESET_N,
+    HPS_DDR3_RZQ,
+    HPS_DDR3_WE_N,
 
-    int sx = (x0 < x1) ? 1 : -1;
-    int sy = (y0 < y1) ? 1 : -1;
+    // Ethernet
+    HPS_ENET_GTX_CLK,
+    HPS_ENET_INT_N,
+    HPS_ENET_MDC,
+    HPS_ENET_MDIO,
+    HPS_ENET_RX_CLK,
+    HPS_ENET_RX_DATA,
+    HPS_ENET_RX_DV,
+    HPS_ENET_TX_DATA,
+    HPS_ENET_TX_EN,
 
-    int err = dx - dy;
+    // Flash
+    HPS_FLASH_DATA,
+    HPS_FLASH_DCLK,
+    HPS_FLASH_NCSO,
 
-    while (1)
-    {
-        struct Tuple point;
-        point.x = x0;
-        point.y = y0;
-        append(pixels, point);
+    // Accelerometer
+    HPS_GSENSOR_INT,
+        
+    // General Purpose I/O
+    HPS_GPIO,
+        
+    // I2C
+    HPS_I2C_CONTROL,
+    HPS_I2C1_SCLK,
+    HPS_I2C1_SDAT,
+    HPS_I2C2_SCLK,
+    HPS_I2C2_SDAT,
 
-        if (x0 == x1 && y0 == y1)
-        {
-            return;
-        }
+    // Pushbutton
+    HPS_KEY,
 
-        int e2 = 2 * err;
+    // LED
+    HPS_LED,
+        
+    // SD Card
+    HPS_SD_CLK,
+    HPS_SD_CMD,
+    HPS_SD_DATA,
 
-        if (e2 > -dy)
-        {
-            err -= dy;
-            x0 += sx;
-        }
+    // SPI
+    HPS_SPIM_CLK,
+    HPS_SPIM_MISO,
+    HPS_SPIM_MOSI,
+    HPS_SPIM_SS,
 
-        if (e2 < dx)
-        {
-            err += dx;
-            y0 += sy;
-        }
-        else if (e2 == dx)
-        { // Handle cases with slope 1 or -1
-            err -= dy;
-            x0 += sx;
-            err += dx;
-            y0 += sy;
-        }
-    }
-}
+    // UART
+    HPS_UART_RX,
+    HPS_UART_TX,
 
-// takes image assuming it has been preprocessed for weights
-int calculate_penalty(int cur, int weight)
-{
-    if (cur < 0)
-    {
-        // // DEBUG______________________________
-        // return (weight < 0) ? 0 : ((int)(-cur * 0.25) >> weight);
-        // // DEBUG______________________________
-        return (weight < 0) ? 0 : -((cur >> LIGHTNESS_PENALTY) >> weight);
-    }
-    else
-    {
-        return (weight < 0) ? 0 : (cur >> weight);
-    }
-}
+    // USB
+    HPS_CONV_USB_N,
+    HPS_USB_CLKOUT,
+    HPS_USB_DATA,
+    HPS_USB_DIR,
+    HPS_USB_NXT,
+    HPS_USB_STP
+);
 
-void generate_unique_random_numbers(int min, int max, int exclude, int N, int *result)
-{
-    int range = max - min + 1;
-    int adjusted_range = range - (exclude >= min && exclude <= max);
-    if (N > adjusted_range)
-    {
-        printf("Error: Cannot generate %d unique random numbers in the given range.\n", N);
-        return;
-    }
+//=======================================================
+//  PARAMETER declarations
+//=======================================================
 
-    int *flags = (int *)calloc(range, sizeof(int));
-    flags[exclude - min] = 1;
 
-    for (int i = 0; i < N; i++)
-    {
-        int rand_num;
-        do
-        {
-            rand_num = rand() % range + min;
-        } while (flags[rand_num - min]);
+//=======================================================
+//  PORT declarations
+//=======================================================
 
-        flags[rand_num - min] = 1;
-        result[i] = rand_num;
-    }
+////////////////////////////////////
+// FPGA Pins
+////////////////////////////////////
 
-    free(flags);
-}
+// Clock pins
+input                       CLOCK_50;
+input                       CLOCK2_50;
+input                       CLOCK3_50;
+input                       CLOCK4_50;
 
-void optimise_fitness(int *image, int *weight, int *previous_edge, struct Tuple *xy)
-{
-    int starting_edge = *previous_edge;
-    int count = 0;
-    // randomly chose a subset of endpoints
-    int *chosen = (int *)malloc(TIME_SAVER * sizeof(int));
-    generate_unique_random_numbers(0, N_HOOKS - 1, starting_edge, TIME_SAVER, chosen);
+// ADC
+inout                       ADC_CS_N;
+output                  ADC_DIN;
+input                       ADC_DOUT;
+output                  ADC_SCLK;
 
-    // // DEBUG______________________________
-    // for (int ii = 0; ii < TIME_SAVER; ii ++){
-    //     printf("el %d: %d \n", ii, chosen[ii]);
-    // }
-    // // DEBUG______________________________
+// Audio
+input                       AUD_ADCDAT;
+inout                       AUD_ADCLRCK;
+inout                       AUD_BCLK;
+output                  AUD_DACDAT;
+inout                       AUD_DACLRCK;
+output                  AUD_XCK;
 
-    int best_endpoint = -1;
-    int best_reduction = INT_MIN;
-    for (int i = 0; i < TIME_SAVER; i++)
-    {
-        int ending_edge = chosen[i];
-        struct LinkedList *pixels = initLinkedList();
-        int penalty_without = 0;
-        int penalty_with = 0;
-        int reduction;
-        through_pixels(xy[starting_edge], xy[ending_edge], pixels);
-        int norm = 0;
-        struct Node *current = pixels->head;
-        while (current != NULL)
-        {
-            norm++;
-            struct Node *temp = current;
-            int image_data = image[temp->data.x + (temp->data.y) * COLS];
-            int weight_data;
-            if (temp->data.y % 2 == 0) {
-                weight_data = weight[temp->data.x + (temp->data.y) * COLS];
-            }
-            else {
-                weight_data = weight[temp->data.x + (temp->data.y - 1) * COLS];
-            }
-            
-            int cur_penalty_without = calculate_penalty(image_data, weight_data);
-            int cur_penalty_with = calculate_penalty(image_data - DARKNESS, weight_data);
-            penalty_with = cur_penalty_with + penalty_with;
-            penalty_without = cur_penalty_without + penalty_without;
-            current = current->next;
-            free(temp);
-        }
-        free(pixels);
-        reduction = (penalty_without - penalty_with) / norm;
-        if (reduction > best_reduction)
-        {
-            best_reduction = reduction;
-            best_endpoint = ending_edge;
-        }
-    }
-    free(chosen);
-    *previous_edge = best_endpoint;
-}
+// SDRAM
+output      [12: 0] DRAM_ADDR;
+output      [ 1: 0] DRAM_BA;
+output                  DRAM_CAS_N;
+output                  DRAM_CKE;
+output                  DRAM_CLK;
+output                  DRAM_CS_N;
+inout           [15: 0] DRAM_DQ;
+output                  DRAM_LDQM;
+output                  DRAM_RAS_N;
+output                  DRAM_UDQM;
+output                  DRAM_WE_N;
 
-void update_image(int *image, struct Tuple *xy, int start, int end)
-{
-    struct LinkedList *pixels = initLinkedList();
-    through_pixels(xy[start], xy[end], pixels);
-    struct Node *current = pixels->head;
-    while (current != NULL)
-    {
-        struct Node *temp = current;
-        image[temp->data.x + (temp->data.y) * COLS] = image[temp->data.x + (temp->data.y) * COLS] - DARKNESS;
-        current = current->next;
-        free(temp);
-    }
-    free(pixels);
-}
+// I2C Bus for Configuration of the Audio and Video-In Chips
+output                  FPGA_I2C_SCLK;
+inout                       FPGA_I2C_SDAT;
 
-void find_lines(int *image, int *weight, struct Tuple *xy, struct Tuple *line_list)
-{
-    int next_edge_value = rand() % N_HOOKS;
-    int *next_edge = &next_edge_value;
-    for (int i = 0; i < N_LINES; i++)
-    {
-        int previous_edge = *next_edge;
-        optimise_fitness(image, weight, next_edge, xy);
-        update_image(image, xy, previous_edge, *next_edge);
-        line_list[i * 2] = xy[previous_edge];
-        line_list[i * 2 + 1] = xy[*next_edge];
-    }
-}
+// 40-pin headers
+inout           [35: 0] GPIO_0;
+inout           [35: 0] GPIO_1;
 
-void p_t(struct Tuple point)
-{
-    printf("%d, %d", point.x, point.y);
-}
+// Seven Segment Displays
+output      [ 6: 0] HEX0;
+output      [ 6: 0] HEX1;
+output      [ 6: 0] HEX2;
+output      [ 6: 0] HEX3;
+output      [ 6: 0] HEX4;
+output      [ 6: 0] HEX5;
 
-int main()
-{
-    // static seed for testing
-    srand(42);
+// IR
+input                       IRDA_RXD;
+output                  IRDA_TXD;
 
-    clock_t start, end;
-    double cpu_time_used;
-    start = clock();
-    printf("Generating Hooks\n");
+// Pushbuttons
+input           [ 3: 0] KEY;
 
-    struct Tuple *xy = (struct Tuple *)malloc(N_HOOKS * sizeof(struct Tuple));
+// LEDs
+output      [ 9: 0] LEDR;
 
-    generate_hooks_with_size(xy);
+// PS2 Ports
+inout                       PS2_CLK;
+inout                       PS2_DAT;
 
-    printf("Reading Image Data\n");
-    int *ah_monochrome = malloc((ROWS * COLS) * sizeof(int));
-    read_array(ah_monochrome, "monalisa.txt");
+inout                       PS2_CLK2;
+inout                       PS2_DAT2;
 
-    printf("Reading Weight Data\n");
-    int *ah_weights = malloc((ROWS * COLS) * sizeof(int));
-    read_array(ah_weights, "ah_wpos.txt");
+// Slider Switches
+input           [ 9: 0] SW;
 
-    // COMMENT WHEN USING WEIGHTS
-    // for (int j = 0; j < ROWS; j++){
-    //     for (int k = 0; k < COLS; k++){
-    //         ah_weights[j*COLS+k] = 0;
-    //     }
-    // }
+// Video-In
+input                       TD_CLK27;
+input           [ 7: 0] TD_DATA;
+input                       TD_HS;
+output                  TD_RESET_N;
+input                       TD_VS;
 
-    printf("Allocating connections list and running optimizer\n");
-    struct Tuple *line_list = (struct Tuple *)malloc(N_LINES * sizeof(struct Tuple) * 2);
-    find_lines(ah_monochrome, ah_weights, xy, line_list);
+// VGA
+output      [ 7: 0] VGA_B;
+output                  VGA_BLANK_N;
+output                  VGA_CLK;
+output      [ 7: 0] VGA_G;
+output                  VGA_HS;
+output      [ 7: 0] VGA_R;
+output                  VGA_SYNC_N;
+output                  VGA_VS;
 
-    // Open the file for writing
-    printf("Done, writing output file\n");
-    FILE *file = fopen("output.txt", "w");
-    if (file == NULL)
-    {
-        printf("Error opening the file.\n");
-        return 1;
-    }
 
-    // Write the array elements to the file
-    for (int i = 0; i < N_LINES; i++)
-    {
-        fprintf(file, "%d", line_list[i * 2].x);
-        fprintf(file, " %d", line_list[i * 2].y);
-        fprintf(file, " %d", line_list[i * 2 + 1].x);
-        fprintf(file, " %d", line_list[i * 2 + 1].y);
-        // Use a newline character instead of a comma to separate elements
-        if (i < N_LINES - 1)
-        {
-            fprintf(file, "\n");
-        }
-    }
 
-    // Close the file
-    fclose(file);
+////////////////////////////////////
+// HPS Pins
+////////////////////////////////////
+    
+// DDR3 SDRAM
+output      [14: 0] HPS_DDR3_ADDR;
+output      [ 2: 0]  HPS_DDR3_BA;
+output                  HPS_DDR3_CAS_N;
+output                  HPS_DDR3_CKE;
+output                  HPS_DDR3_CK_N;
+output                  HPS_DDR3_CK_P;
+output                  HPS_DDR3_CS_N;
+output      [ 3: 0] HPS_DDR3_DM;
+inout           [31: 0] HPS_DDR3_DQ;
+inout           [ 3: 0] HPS_DDR3_DQS_N;
+inout           [ 3: 0] HPS_DDR3_DQS_P;
+output                  HPS_DDR3_ODT;
+output                  HPS_DDR3_RAS_N;
+output                  HPS_DDR3_RESET_N;
+input                       HPS_DDR3_RZQ;
+output                  HPS_DDR3_WE_N;
 
-    printf("Array written to the output.txt file.\n");
+// Ethernet
+output                  HPS_ENET_GTX_CLK;
+inout                       HPS_ENET_INT_N;
+output                  HPS_ENET_MDC;
+inout                       HPS_ENET_MDIO;
+input                       HPS_ENET_RX_CLK;
+input           [ 3: 0] HPS_ENET_RX_DATA;
+input                       HPS_ENET_RX_DV;
+output      [ 3: 0] HPS_ENET_TX_DATA;
+output                  HPS_ENET_TX_EN;
 
-    free(line_list);
-    free(xy);
-    free(ah_monochrome);
-    free(ah_weights);
+// Flash
+inout           [ 3: 0] HPS_FLASH_DATA;
+output                  HPS_FLASH_DCLK;
+output                  HPS_FLASH_NCSO;
 
-    end = clock();
-    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+// Accelerometer
+inout                       HPS_GSENSOR_INT;
 
-    printf("Memory freed, used %f CPU time\n", cpu_time_used);
-    return 0;
-}
+// General Purpose I/O
+inout           [ 1: 0] HPS_GPIO;
+
+// I2C
+inout                       HPS_I2C_CONTROL;
+inout                       HPS_I2C1_SCLK;
+inout                       HPS_I2C1_SDAT;
+inout                       HPS_I2C2_SCLK;
+inout                       HPS_I2C2_SDAT;
+
+// Pushbutton
+inout                       HPS_KEY;
+
+// LED
+inout                       HPS_LED;
+
+// SD Card
+output                  HPS_SD_CLK;
+inout                       HPS_SD_CMD;
+inout           [ 3: 0] HPS_SD_DATA;
+
+// SPI
+output                  HPS_SPIM_CLK;
+input                       HPS_SPIM_MISO;
+output                  HPS_SPIM_MOSI;
+inout                       HPS_SPIM_SS;
+
+// UART
+input                       HPS_UART_RX;
+output                  HPS_UART_TX;
+
+// USB
+inout                       HPS_CONV_USB_N;
+input                       HPS_USB_CLKOUT;
+inout           [ 7: 0] HPS_USB_DATA;
+input                       HPS_USB_DIR;
+input                       HPS_USB_NXT;
+output                  HPS_USB_STP;
+
+//=======================================================
+//  REG/WIRE declarations
+//=======================================================
+
+wire            [15: 0] hex3_hex0;
+//wire          [15: 0] hex5_hex4;
+
+//assign HEX0 = ~hex3_hex0[ 6: 0]; // hex3_hex0[ 6: 0]; 
+//assign HEX1 = ~hex3_hex0[14: 8];
+//assign HEX2 = ~hex3_hex0[22:16];
+//assign HEX3 = ~hex3_hex0[30:24];
+assign HEX4 = 7'b1111111;
+assign HEX5 = 7'b1111111;
+
+HexDigit Digit0(HEX0, hex3_hex0[3:0]);
+HexDigit Digit1(HEX1, hex3_hex0[7:4]);
+HexDigit Digit2(HEX2, hex3_hex0[11:8]);
+HexDigit Digit3(HEX3, hex3_hex0[15:12]);
+
+// PIO signals
+wire [31:0] arm_data; // arm output
+wire [31:0] arm_data2; // arm output
+wire arm_val; // arm output
+wire arm_rdy; // arm output 
+wire arm_ack;
+wire fpga_ack;
+wire [31:0] fpga_data; // arm input
+wire fpga_val; // arm input
+wire fpga_rdy; // arm input
+
+
+// M10k memory clock
+wire                    M10k_pll ;
+wire                    M10k_pll_locked ;
+
+// Instantiate Image memory
+wire  [9:0] image_write_address [0:239];
+wire  [9:0] image_read_address  [0:239];
+wire  image_we                  [0:239];
+wire  [19:0] image_readout       [0:239];
+wire   [19:0] image_writein       [0:239];
+genvar i;
+generate
+    for (i=0; i<240; i=i+1) begin: imageMemGen
+        M10K_1000_18 mem(
+            .clk(CLOCK_50),
+            .d(image_writein[i]),
+            .write_address(image_write_address[i]),
+            .read_address(image_read_address[i]),
+            .we(image_we[i]),
+            .q(image_readout[i])
+        );
+    end
+endgenerate
+
+// Instantiate Weight memory
+// wire  [9:0] weight_write_address [0:239];
+// wire  [9:0] weight_read_address  [0:239];
+// wire  weight_we                  [0:239];
+// wire  [7:0] weight_readout       [0:239];
+// wire   [7:0] weight_writein       [0:239];
+// genvar j;
+// generate
+//     for (j=0; j<240; j=j+1) begin: weightMemGen
+//         M10K_1000_4 mem(
+//             .clk(CLOCK_50),
+//             .d(weight_writein[j]),
+//             .write_address(weight_write_address[j]),
+//             .read_address(weight_read_address[j]),
+//             .we(weight_we[j]),
+//             .q(weight_readout[j])
+//         );
+//     end
+// endgenerate
+
+logic mr_fpga_ack, mr_fpga_val, mr_fpga_rdy;
+logic mw_fpga_ack, mw_fpga_val, mw_fpga_rdy;
+logic sv_fpga_ack, sv_fpga_val, sv_fpga_rdy;
+logic [31:0] mr_fpga_data, mw_fpga_data, sv_fpga_data;
+
+
+logic sv_reset;
+logic [9:0] sv_addr, sv_which;
+logic sv_we;
+logic [17:0] sv_image_mem_data, sv_image_mem_writeout;
+logic [31:0] sv_arm_data;
+logic [31:0] sv_debug_count;
+
+solvers svs (
+    .clk(CLOCK_50),
+    .reset(sv_reset),
+
+    .arm_val(arm_val),
+    .arm_ack(arm_ack),
+    .arm_data(arm_data),
+    .arm_data2(arm_data2),
+
+    .image_mem_data(sv_image_mem_data),
+
+    .fpga_val(sv_fpga_val),
+    .fpga_ack(sv_fpga_ack),
+    .fpga_data(sv_fpga_data),
+
+    .image_mem_addr(sv_addr),
+    .which_mem(sv_which),
+    .we(sv_we),
+    .image_mem_writeout(sv_image_mem_writeout),
+    .debug_count(sv_debug_count)
+);
+
+
+reg mw_reset;
+wire mw_done, mw_we;
+
+wire [19:0] mw_d;
+wire [9:0] mw_which_mem;
+wire [9:0] mw_addr;
+wire [31:0] mw_count;
+logic [31:0] mw_arm_data;
+
+mem_writer m_w (
+    .clk(CLOCK_50),
+
+    .arm_data(arm_data),
+    .arm_val(arm_val),
+    .arm_ack(arm_ack),
+    .reset(mw_reset),
+
+    .fpga_ack(mw_fpga_ack),
+
+    .d(mw_d),
+    .addr(mw_addr),
+    .we(mw_we),
+    .which_mem(mw_which_mem),
+
+    .done(mw_done),
+    .count(mw_count)
+);
+
+reg mr_reset;
+wire mr_done;
+
+wire [19:0] mr_image_data;
+wire [9:0] mr_addr;
+wire [9:0] mr_which_mem;
+wire [31:0] mr_count;
+mem_reader m_r (
+    .clk(CLOCK_50),
+
+    .arm_ack(arm_ack),
+    
+    .image_mem_data(mr_image_data),
+    .reset(mr_reset),
+
+    .fpga_val(mr_fpga_val),
+    .fpga_ack(mr_fpga_ack),
+    .fpga_data(mr_fpga_data),
+
+    .addr(mr_addr),
+    .which_mem(mr_which_mem),
+    .done(mr_done),
+    .count(mr_count)
+);
+
+assign mr_image_data = image_readout[mr_which_mem];
+assign sv_image_mem_data = image_readout[sv_which];
+
+// assign fpga_rdy = mw_fpga_rdy;
+// assign fpga_val = mr_fpga_val;
+// assign fpga_data = mr_fpga_data;
+
+// assign fpga_rdy = mr_fpga_rdy;
+// assign fpga_val = mr_fpga_val;
+// assign fpga_data = mr_fpga_data;
+
+assign LEDR[0] = KEY[0] ? 0 : 1;
+assign LEDR[1] = fpga_ack ? 1 : 0;
+assign LEDR[2] = sv_fpga_ack ? 1 : 0;
+assign LEDR[3] = sv_fpga_val ? 1 : 0;
+assign LEDR[4] = sv_debug_count[7] ? 1 : 0;
+assign LEDR[5] = sv_debug_count[6] ? 1 : 0;
+
+// assign hex3_hex0 = 16'd2;
+assign pio_reset = ~KEY[0];
+reg [3:0] state;
+assign fpga_rdy =  (state < 5 ) ?  mw_fpga_rdy  : ( (state > 6 ) ? sv_fpga_rdy  : mr_fpga_rdy  ); 
+assign fpga_val =  (state < 5 ) ?  mw_fpga_val  : ( (state > 6 ) ? sv_fpga_val  : mr_fpga_val  );
+assign fpga_data = (state < 5 ) ?  mw_fpga_data : ( (state > 6 ) ? sv_fpga_data : mr_fpga_data );
+assign fpga_ack =  (state < 5 ) ?  mw_fpga_ack  : ( (state > 6 ) ? sv_fpga_ack  : mr_fpga_ack  );
+
+
+// synthesize 240 comparators
+genvar k;
+generate
+    for (k = 0; k < 240; k=k+1) begin : gen_assignments
+        assign image_write_address[k] = (state > 6) ? ( (k == sv_which) ? sv_addr : 0 ) : ( (k == mw_which_mem) ? mw_addr : 0);
+        assign image_writein[k] = (state > 6) ? ( (k == sv_which) ? sv_image_mem_writeout : 0 ) : ( (k == mw_which_mem) ? mw_d : 0);
+        assign image_we[k] = (state > 6) ? ( (k == sv_which) ? sv_we : 0 ) : ( (k == mw_which_mem) ? mw_we : 0 );
+
+        assign image_read_address[k] = (state > 6) ? ( (k == sv_which) ? sv_addr : 0) : ( (k == mr_which_mem) ? mr_addr : 0);
+    end
+endgenerate
+
+// assign hex3_hex0 = mr_count;
+
+// assign hex3_hex0[3:0] = state;
+// assign hex3_hex0[7:4] = mw_count[3:0];
+// assign hex3_hex0[11:8] = mr_count[3:0];
+// assign hex3_hex0[3:0] = sv_debug_count[5:0];
+assign hex3_hex0[11:4] = sv_debug_count[31:24];
+
+
+// assign sv_arm_data = state > 6 ? arm_data : 0;
+// assign mw_arm_data = state <= 6 ? arm_data : 0;
+
+always@(posedge CLOCK_50) begin 
+    if (~KEY[0])  begin 
+        state <= 0;
+    end 
+    else if (state == 0) begin 
+        sv_reset <= 1;
+        mw_reset <= 1;
+        mr_reset <= 1;
+        state <= 1;
+    end 
+    else if (state == 1) begin 
+        mw_reset <= 0;  
+        state <= 2;
+    end 
+    else if (state == 2) begin 
+        state <= 2;
+        if (mw_done == 1) begin 
+            state <= 3;
+        end 
+    end 
+    else if (state == 3) begin //starting the verification
+        state <= 4;
+    end 
+    else if (state == 4) begin 
+        mr_reset <= 0;
+        state <= 5;
+    end 
+    else if (state == 5) begin 
+        state <= 5;
+        if (mr_done == 1) begin
+            state <= 6;
+        end 
+    end 
+    else if (state == 6) begin //starting the solvers
+        mr_reset <= 1;
+        mw_reset <= 1;
+        sv_reset <= 0;
+        state <= 7;
+    end
+    else if (state == 7) begin //let solvers work
+        state <= 7;
+    end 
+end 
+
+//=======================================================
+//  Structural coding
+//=======================================================
+
+Computer_System The_System (
+    ////////////////////////////////////
+    // FPGA Side
+    ////////////////////////////////////
+
+    // PLL
+    .m10k_pll_locked_export         (M10k_pll_locked),          //      m10k_pll_locked.export
+    .m10k_pll_outclk0_clk           (M10k_pll),            //     m10k_pll_outclk0.clk
+
+    // PIO
+    .arm_data_external_connection_export            (arm_data),
+    .arm_data2_external_connection_export           (arm_data2),
+    .arm_val_external_connection_export             (arm_val),
+    .arm_rdy_external_connection_export             (arm_rdy),
+    .arm_ack_external_connection_export             (arm_ack),
+
+    .fpga_data_external_connection_export           (fpga_data),
+    .fpga_val_external_connection_export            (fpga_val),
+    .fpga_rdy_external_connection_export            (fpga_rdy),
+    .pio_reset_external_connection_export           (pio_reset),
+    .fpga_ack_external_connection_export            (fpga_ack),
+
+    // Global signals
+    .system_pll_ref_clk_clk                 (CLOCK_50),
+    .system_pll_ref_reset_reset         (1'b0),
+
+    // AV Config
+    .av_config_SCLK                         (FPGA_I2C_SCLK),
+    .av_config_SDAT                         (FPGA_I2C_SDAT),
+
+    // VGA Subsystem
+    .vga_pll_ref_clk_clk                    (CLOCK2_50),
+    .vga_pll_ref_reset_reset                (1'b0),
+    .vga_CLK                                        (VGA_CLK),
+    .vga_BLANK                                  (VGA_BLANK_N),
+    .vga_SYNC                                   (VGA_SYNC_N),
+    .vga_HS                                     (VGA_HS),
+    .vga_VS                                     (VGA_VS),
+    .vga_R                                      (VGA_R),
+    .vga_G                                      (VGA_G),
+    .vga_B                                      (VGA_B),
+    
+    // SDRAM
+    .sdram_clk_clk                              (DRAM_CLK),
+   .sdram_addr                                  (DRAM_ADDR),
+    .sdram_ba                                   (DRAM_BA),
+    .sdram_cas_n                                (DRAM_CAS_N),
+    .sdram_cke                                  (DRAM_CKE),
+    .sdram_cs_n                                 (DRAM_CS_N),
+    .sdram_dq                                   (DRAM_DQ),
+    .sdram_dqm                                  ({DRAM_UDQM,DRAM_LDQM}),
+    .sdram_ras_n                                (DRAM_RAS_N),
+    .sdram_we_n                                 (DRAM_WE_N),
+    
+    ////////////////////////////////////
+    // HPS Side
+    ////////////////////////////////////
+    // DDR3 SDRAM
+    .memory_mem_a           (HPS_DDR3_ADDR),
+    .memory_mem_ba          (HPS_DDR3_BA),
+    .memory_mem_ck          (HPS_DDR3_CK_P),
+    .memory_mem_ck_n        (HPS_DDR3_CK_N),
+    .memory_mem_cke     (HPS_DDR3_CKE),
+    .memory_mem_cs_n        (HPS_DDR3_CS_N),
+    .memory_mem_ras_n       (HPS_DDR3_RAS_N),
+    .memory_mem_cas_n       (HPS_DDR3_CAS_N),
+    .memory_mem_we_n        (HPS_DDR3_WE_N),
+    .memory_mem_reset_n (HPS_DDR3_RESET_N),
+    .memory_mem_dq          (HPS_DDR3_DQ),
+    .memory_mem_dqs     (HPS_DDR3_DQS_P),
+    .memory_mem_dqs_n       (HPS_DDR3_DQS_N),
+    .memory_mem_odt     (HPS_DDR3_ODT),
+    .memory_mem_dm          (HPS_DDR3_DM),
+    .memory_oct_rzqin       (HPS_DDR3_RZQ),
+          
+    // Ethernet
+    .hps_io_hps_io_gpio_inst_GPIO35 (HPS_ENET_INT_N),
+    .hps_io_hps_io_emac1_inst_TX_CLK    (HPS_ENET_GTX_CLK),
+    .hps_io_hps_io_emac1_inst_TXD0  (HPS_ENET_TX_DATA[0]),
+    .hps_io_hps_io_emac1_inst_TXD1  (HPS_ENET_TX_DATA[1]),
+    .hps_io_hps_io_emac1_inst_TXD2  (HPS_ENET_TX_DATA[2]),
+    .hps_io_hps_io_emac1_inst_TXD3  (HPS_ENET_TX_DATA[3]),
+    .hps_io_hps_io_emac1_inst_RXD0  (HPS_ENET_RX_DATA[0]),
+    .hps_io_hps_io_emac1_inst_MDIO  (HPS_ENET_MDIO),
+    .hps_io_hps_io_emac1_inst_MDC       (HPS_ENET_MDC),
+    .hps_io_hps_io_emac1_inst_RX_CTL    (HPS_ENET_RX_DV),
+    .hps_io_hps_io_emac1_inst_TX_CTL    (HPS_ENET_TX_EN),
+    .hps_io_hps_io_emac1_inst_RX_CLK    (HPS_ENET_RX_CLK),
+    .hps_io_hps_io_emac1_inst_RXD1  (HPS_ENET_RX_DATA[1]),
+    .hps_io_hps_io_emac1_inst_RXD2  (HPS_ENET_RX_DATA[2]),
+    .hps_io_hps_io_emac1_inst_RXD3  (HPS_ENET_RX_DATA[3]),
+
+    // Flash
+    .hps_io_hps_io_qspi_inst_IO0    (HPS_FLASH_DATA[0]),
+    .hps_io_hps_io_qspi_inst_IO1    (HPS_FLASH_DATA[1]),
+    .hps_io_hps_io_qspi_inst_IO2    (HPS_FLASH_DATA[2]),
+    .hps_io_hps_io_qspi_inst_IO3    (HPS_FLASH_DATA[3]),
+    .hps_io_hps_io_qspi_inst_SS0    (HPS_FLASH_NCSO),
+    .hps_io_hps_io_qspi_inst_CLK    (HPS_FLASH_DCLK),
+
+    // Accelerometer
+    .hps_io_hps_io_gpio_inst_GPIO61 (HPS_GSENSOR_INT),
+
+    //.adc_sclk                        (ADC_SCLK),
+    //.adc_cs_n                        (ADC_CS_N),
+    //.adc_dout                        (ADC_DOUT),
+    //.adc_din                         (ADC_DIN),
+
+    // General Purpose I/O
+    .hps_io_hps_io_gpio_inst_GPIO40 (HPS_GPIO[0]),
+    .hps_io_hps_io_gpio_inst_GPIO41 (HPS_GPIO[1]),
+
+    // I2C
+    .hps_io_hps_io_gpio_inst_GPIO48 (HPS_I2C_CONTROL),
+    .hps_io_hps_io_i2c0_inst_SDA        (HPS_I2C1_SDAT),
+    .hps_io_hps_io_i2c0_inst_SCL        (HPS_I2C1_SCLK),
+    .hps_io_hps_io_i2c1_inst_SDA        (HPS_I2C2_SDAT),
+    .hps_io_hps_io_i2c1_inst_SCL        (HPS_I2C2_SCLK),
+
+    // Pushbutton
+    .hps_io_hps_io_gpio_inst_GPIO54 (HPS_KEY),
+
+    // LED
+    .hps_io_hps_io_gpio_inst_GPIO53 (HPS_LED),
+
+    // SD Card
+    .hps_io_hps_io_sdio_inst_CMD    (HPS_SD_CMD),
+    .hps_io_hps_io_sdio_inst_D0 (HPS_SD_DATA[0]),
+    .hps_io_hps_io_sdio_inst_D1 (HPS_SD_DATA[1]),
+    .hps_io_hps_io_sdio_inst_CLK    (HPS_SD_CLK),
+    .hps_io_hps_io_sdio_inst_D2 (HPS_SD_DATA[2]),
+    .hps_io_hps_io_sdio_inst_D3 (HPS_SD_DATA[3]),
+
+    // SPI
+    .hps_io_hps_io_spim1_inst_CLK       (HPS_SPIM_CLK),
+    .hps_io_hps_io_spim1_inst_MOSI  (HPS_SPIM_MOSI),
+    .hps_io_hps_io_spim1_inst_MISO  (HPS_SPIM_MISO),
+    .hps_io_hps_io_spim1_inst_SS0       (HPS_SPIM_SS),
+
+    // UART
+    .hps_io_hps_io_uart0_inst_RX    (HPS_UART_RX),
+    .hps_io_hps_io_uart0_inst_TX    (HPS_UART_TX),
+
+    // USB
+    .hps_io_hps_io_gpio_inst_GPIO09 (HPS_CONV_USB_N),
+    .hps_io_hps_io_usb1_inst_D0     (HPS_USB_DATA[0]),
+    .hps_io_hps_io_usb1_inst_D1     (HPS_USB_DATA[1]),
+    .hps_io_hps_io_usb1_inst_D2     (HPS_USB_DATA[2]),
+    .hps_io_hps_io_usb1_inst_D3     (HPS_USB_DATA[3]),
+    .hps_io_hps_io_usb1_inst_D4     (HPS_USB_DATA[4]),
+    .hps_io_hps_io_usb1_inst_D5     (HPS_USB_DATA[5]),
+    .hps_io_hps_io_usb1_inst_D6     (HPS_USB_DATA[6]),
+    .hps_io_hps_io_usb1_inst_D7     (HPS_USB_DATA[7]),
+    .hps_io_hps_io_usb1_inst_CLK        (HPS_USB_CLKOUT),
+    .hps_io_hps_io_usb1_inst_STP        (HPS_USB_STP),
+    .hps_io_hps_io_usb1_inst_DIR        (HPS_USB_DIR),
+    .hps_io_hps_io_usb1_inst_NXT        (HPS_USB_NXT)
+);
+
+
+endmodule
+
+module M10K_1000_18( 
+    output reg [19:0] q,
+    input [19:0] d,
+    input [9:0] write_address, read_address,
+    input we, clk
+);
+     // force M10K ram style
+     // 480 words of 18 bits representing 2 rows of 480 pixels, MSB is the second row
+    reg [17:0] mem [479:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
+     
+    always @ (posedge clk) begin
+        if (we) begin
+            mem[write_address] <= d;
+          end
+        q <= mem[read_address]; // q doesn't get d in this clock cycle
+    end
+endmodule
+
+// module M10K_1000_8( 
+//     output reg [7:0] q,
+//     input [7:0] d,
+//     input [9:0] write_address, read_address,
+//     input we, clk
+// );
+//   // force M10K ram style
+//   // 960 words of 8 bits representing 2 rows of 480 pixels
+//     reg [7:0] mem [959:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
+     
+//     always @ (posedge clk) begin
+//         if (we) begin
+//             mem[write_address] <= d;
+//        end
+//         q <= mem[read_address]; // q doesn't get d in this clock cycle
+//     end
+// endmodule
+
 ```

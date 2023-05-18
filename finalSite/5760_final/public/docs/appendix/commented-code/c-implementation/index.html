@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="C implementation#// compile with gcc thread_art.c -o out -O2 -lm -std=c99 #include &lt;stdio.h&gt; #include &lt;stdlib.h&gt; #include &lt;math.h&gt; #include &lt;time.h&gt; #define WHEEL_PIXEL_SIZE 1600 #define N_HOOKS 160 // needs to be divisible by 2 #define HOOK_PIXEL_SIZE 3 #define ROWS 1600 #define COLS 1600 #define N_LINES 800 #define LIGHTNESS_PENALTY 1 // defined in terms of right shifts #define DARKNESS 800 #define TIME_SAVER 40 // defined as terms to actually consider #ifndef M_PI #define M_PI 3.">
+<meta name="description" content="// compile with gcc thread_art.c -o out -O2 -lm -std=c99 #include &lt;stdio.h&gt; #include &lt;stdlib.h&gt; #include &lt;math.h&gt; #include &lt;time.h&gt; #define WHEEL_PIXEL_SIZE 1600 #define N_HOOKS 160 // needs to be divisible by 2 #define HOOK_PIXEL_SIZE 3 #define ROWS 1600 #define COLS 1600 #define N_LINES 800 #define LIGHTNESS_PENALTY 1 // defined in terms of right shifts #define DARKNESS 800 #define TIME_SAVER 40 // defined as terms to actually consider #ifndef M_PI #define M_PI 3.">
 <meta name="theme-color" content="#FFFFFF">
 <meta name="color-scheme" content="light dark"><meta property="og:title" content="" />
 <meta property="og:description" content="" />
@@ -14,7 +14,7 @@
 <link rel="icon" href="../../../../favicon.png" type="image/x-icon">
 <link rel="stylesheet" href="../../../../book.min.33a48f5432973b8ff9a82679d9e45d67f2c15d4399bd2829269455cfe390b5e8.css" >
   <script defer src="../../../../flexsearch.min.js"></script>
-  <script defer src="../../../../en.search.min.b0c4aa5971f272ad643ad39c957fd01ebe13ff1f81c0257985e2dc61215b880b.js" ></script>
+  <script defer src="../../../../en.search.min.2e0abd61cc00a368c5b6220fd4fc701ba7daa520efa490a3d9819a57cea4c5dd.js" ></script>
 <link rel="alternate" type="application/rss+xml" href="../../../../docs/appendix/commented-code/c-implementation/index.xml" title="ECE 5760 Final Project" />
 <!--
 Made with Book Theme
@@ -112,6 +112,78 @@ https://github.com/alex-shpak/hugo-book
   
 
   
+    <a href="../../../../docs/appendix/commented-code/verilog-implementation/bresenham/" class="">Bresenham</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../../../docs/appendix/commented-code/verilog-implementation/memory-verifier/" class="">Memory Verifier</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../../../docs/appendix/commented-code/verilog-implementation/memory-writer/" class="">Memory Writer</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../../../docs/appendix/commented-code/verilog-implementation/solvers/" class="">Solvers</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
     <a href="../../../../docs/appendix/commented-code/verilog-implementation/top-level/" class="">Top Level</a>
   
 
@@ -153,7 +225,7 @@ https://github.com/alex-shpak/hugo-book
   
 
   
-    <span>Hps</span>
+    <a href="../../../../docs/appendix/commented-code/hps/" class="">Hps</a>
   
 
           
@@ -165,19 +237,6 @@ https://github.com/alex-shpak/hugo-book
       
     
   </ul>
-
-        </li>
-      
-    
-      
-        <li>
-          
-  
-  
-
-  
-    <a href="../../../../docs/appendix/gallery/" class="">Gallery</a>
-  
 
         </li>
       
@@ -248,11 +307,7 @@ https://github.com/alex-shpak/hugo-book
 
       
       
-  <article class="markdown"><h1 id="c-implementation">
-  C implementation
-  <a class="anchor" href="#c-implementation">#</a>
-</h1>
-<pre tabindex="0"><code>// compile with gcc thread_art.c -o out -O2 -lm -std=c99
+  <article class="markdown"><pre tabindex="0"><code>// compile with gcc thread_art.c -o out -O2 -lm -std=c99
 #include &lt;stdio.h&gt;
 #include &lt;stdlib.h&gt;
 #include &lt;math.h&gt;

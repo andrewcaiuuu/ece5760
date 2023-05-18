@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="// ============================================================================ // Module that writes to M10k memory using data from HPS //============================================================================= module mem_writer( input clk, // arm interface input [31:0] arm_data, input arm_val, input arm_ack, input reset, // fpga interface output logic fpga_ack, // for memories output signed [19:0] d, output logic [9:0] addr, output logic we, output logic [9:0] which_mem, output logic done, // for debug output logic [31:0] count // for debugging ); // assign which_mem = arm_data[31:16]; logic is_last; logic [3:0] state; assign state_debug = state; assign d = arm_data; assign count = state; always@(posedge clk) begin if (reset) begin done &lt;= 0; fpga_ack &lt;= 0; addr &lt;= 0; which_mem &lt;= 0; state &lt;= 0; // count &lt;= 0; end else if (state == 0) begin state &lt;= 0; if (arm_val) begin // have a valid request we &lt;= 1; state &lt;= 1; is_last &lt;= arm_data[31]; fpga_ack &lt;= 1; // ack the request end end else if (state == 1) begin state &lt;= 1; // stay in this state until we get a clear ack if (arm_ack) begin state &lt;= 2; // increment state fpga_ack &lt;= 0; // clear ack end end else if (state == 2) begin state &lt;= 2; // stay in this state until we get a clear ack if ( ~arm_ack) begin state &lt;= 3; end end else if (state == 3) begin addr &lt;= addr &#43; 1; // count &lt;= count &#43; 1; if (addr == 479) begin addr &lt;= 0; which_mem &lt;= which_mem &#43; 1; end if ( is_last ) begin done &lt;= 1; state &lt;= 4; end else begin state &lt;= 0; end end end endmodule ">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="color-scheme" content="light dark"><meta property="og:title" content="" />
+<meta property="og:description" content="" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="/docs/appendix/commented-code/verilog-implementation/memory-writer/" />
+<title>Memory Writer | ECE 5760 Final Project</title>
+<link rel="manifest" href="../../../../../manifest.json">
+<link rel="icon" href="../../../../../favicon.png" type="image/x-icon">
+<link rel="stylesheet" href="../../../../../book.min.33a48f5432973b8ff9a82679d9e45d67f2c15d4399bd2829269455cfe390b5e8.css" >
+  <script defer src="../../../../../flexsearch.min.js"></script>
+  <script defer src="../../../../../en.search.min.2e0abd61cc00a368c5b6220fd4fc701ba7daa520efa490a3d9819a57cea4c5dd.js" ></script>
+<link rel="alternate" type="application/rss+xml" href="../../../../../docs/appendix/commented-code/verilog-implementation/memory-writer/index.xml" title="ECE 5760 Final Project" />
+<!--
+Made with Book Theme
+https://github.com/alex-shpak/hugo-book
+-->
+  
+</head>
+<body dir="ltr">
+  <input type="checkbox" class="hidden toggle" id="menu-control" />
+  <input type="checkbox" class="hidden toggle" id="toc-control" />
+  <main class="container flex">
+    <aside class="book-menu">
+      <div class="book-menu-content">
+        
+  <nav>
+<h2 class="book-brand">
+  <a class="flex align-center" href="../../../../../"><span>ECE 5760 Final Project</span>
+  </a>
+</h2>
+
+
+<div class="book-search">
+  <input type="text" id="book-search-input" placeholder="Search" aria-label="Search" maxlength="64" data-hotkeys="s/" />
+  <div class="book-search-spinner hidden"></div>
+  <ul id="book-search-results"></ul>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+  
+  <ul>
+    
+      
+        <li class="book-section-flat" >
+          
+  
+  
+
+  
+    <span>Appendix</span>
+  
+
+          
+  <ul>
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <input type="checkbox" id="section-03af186d4354d1a949635485871312da" class="toggle" checked />
+    <label for="section-03af186d4354d1a949635485871312da" class="flex justify-between">
+      <a role="button" class="">Commented Code</a>
+    </label>
+  
+
+          
+  <ul>
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <input type="checkbox" id="section-ca9b5a63f1250e7d6b9247c354c6d137" class="toggle" checked />
+    <label for="section-ca9b5a63f1250e7d6b9247c354c6d137" class="flex justify-between">
+      <a role="button" class="">Verilog Implementation</a>
+    </label>
+  
+
+          
+  <ul>
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../../../../docs/appendix/commented-code/verilog-implementation/bresenham/" class="">Bresenham</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../../../../docs/appendix/commented-code/verilog-implementation/memory-verifier/" class="">Memory Verifier</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../../../../docs/appendix/commented-code/verilog-implementation/memory-writer/" class="active">Memory Writer</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../../../../docs/appendix/commented-code/verilog-implementation/solvers/" class="">Solvers</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../../../../docs/appendix/commented-code/verilog-implementation/top-level/" class="">Top Level</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../../../../docs/appendix/commented-code/c-implementation/" class="">C Implementation</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+      
+        <li>
+          
+  
+  
+
+  
+    <a href="../../../../../docs/appendix/commented-code/hps/" class="">Hps</a>
+  
+
+          
+  <ul>
+    
+  </ul>
+
+        </li>
+      
+    
+  </ul>
+
+        </li>
+      
+    
+  </ul>
+
+        </li>
+      
+    
+  </ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</nav>
+
+
+
+
+  <script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script>
+
+
+ 
+      </div>
+    </aside>
+
+    <div class="book-page">
+      <header class="book-header">
+        
+  <div class="flex align-center justify-between">
+  <label for="menu-control">
+    <img src="../../../../../svg/menu.svg" class="book-icon" alt="Menu" />
+  </label>
+
+  <strong>Memory Writer</strong>
+
+  <label for="toc-control">
+    
+    <img src="../../../../../svg/toc.svg" class="book-icon" alt="Table of Contents" />
+    
+  </label>
+</div>
+
+
+  
+  <aside class="hidden clearfix">
+    
+  
+<nav id="TableOfContents"></nav>
+
+
+
+  </aside>
+  
+ 
+      </header>
+
+      
+      
+  <article class="markdown"><pre tabindex="0"><code>// ============================================================================
+// Module that writes to M10k memory using data from HPS
+//=============================================================================
+
+module mem_writer(
+    input clk,
+
+    // arm interface
+    input [31:0] arm_data,
+    input arm_val,
+    input arm_ack,
+    input reset,
+
+    // fpga interface
+    output logic fpga_ack,
+
+    // for memories
+    output signed [19:0] d,
+    output logic [9:0] addr,
+    output logic we,
+    output logic [9:0] which_mem,
+
+    output logic done,
+    // for debug
+    output logic [31:0] count // for debugging
+);
+    
+// assign which_mem = arm_data[31:16];
+logic is_last;
+logic [3:0] state;
+assign state_debug = state;
+assign d = arm_data;
+
+assign count = state;
+
+always@(posedge clk) begin 
+    if (reset) begin 
+        done &lt;= 0;
+        fpga_ack &lt;= 0;
+        addr &lt;= 0;
+        which_mem &lt;= 0;
+        state &lt;= 0;
+        // count &lt;= 0;
+    end
+    else if (state == 0) begin 
+        state &lt;= 0;
+        if (arm_val) begin // have a valid request
+            we &lt;= 1;
+            state &lt;= 1;
+            is_last &lt;= arm_data[31];
+            fpga_ack &lt;= 1; // ack the request
+        end 
+    end 
+    else if (state == 1) begin 
+        state &lt;= 1; // stay in this state until we get a clear ack
+        if (arm_ack) begin 
+            state &lt;= 2; // increment state
+            fpga_ack &lt;= 0; // clear ack
+        end 
+    end 
+    else if (state == 2) begin 
+        state &lt;= 2; // stay in this state until we get a clear ack
+        if ( ~arm_ack) begin 
+            state &lt;= 3;
+        end 
+    end 
+    else if (state == 3) begin 
+        addr &lt;= addr + 1;
+        // count &lt;= count + 1;
+        if (addr == 479) begin 
+            addr &lt;= 0;
+            which_mem &lt;= which_mem + 1;
+        end 
+        if ( is_last ) begin 
+            done &lt;= 1;
+            state &lt;= 4;
+        end 
+        else begin 
+            state &lt;= 0;
+        end
+    end 
+end
+
+endmodule
+</code></pre></article>
+ 
+      
+
+      <footer class="book-footer">
+        
+  <div class="flex flex-wrap justify-between">
+
+
+
+
+
+</div>
+
+
+
+  <script>(function(){function e(e){const t=window.getSelection(),n=document.createRange();n.selectNodeContents(e),t.removeAllRanges(),t.addRange(n)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){if(window.getSelection().toString())return;e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script>
+
+
+ 
+        
+      </footer>
+
+      
+  
+  <div class="book-comments">
+
+</div>
+  
+ 
+
+      <label for="menu-control" class="hidden book-menu-overlay"></label>
+    </div>
+
+    
+    <aside class="book-toc">
+      <div class="book-toc-content">
+        
+  
+<nav id="TableOfContents"></nav>
+
+
+ 
+      </div>
+    </aside>
+    
+  </main>
+
+  
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
